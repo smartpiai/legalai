@@ -1,0 +1,677 @@
+# Legal AI Platform - Comprehensive .gitignore
+# ================================================
+
+# ===========================
+# Python & Backend
+# ===========================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+pip-wheel-metadata/
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+backend/venv/
+backend/.venv/
+ml-services/*/venv/
+ml-services/*/.venv/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Testing & Coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+cover/
+*.cover
+*.py,cover
+.hypothesis/
+pytest_cache/
+nosetests.xml
+coverage.xml
+*.coveragerc
+.mutmut-cache
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+cython_debug/
+test-results/
+backend/test-results/
+backend/htmlcov/
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+*.ipynb_checkpoints
+
+# ===========================
+# Node.js & Frontend
+# ===========================
+
+# Dependencies
+node_modules/
+frontend/node_modules/
+jspm_packages/
+.pnp
+.pnp.js
+
+# Testing
+frontend/coverage/
+frontend/.nyc_output
+*.lcov
+
+# Production builds
+frontend/build/
+frontend/dist/
+frontend/.next/
+frontend/out/
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Package manager files
+.npm
+.yarn-integrity
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Vite
+frontend/.vite/
+frontend/vite.config.js.timestamp-*
+frontend/vite.config.ts.timestamp-*
+
+# TypeScript
+*.tsbuildinfo
+frontend/tsconfig.tsbuildinfo
+
+# ESLint & Prettier
+.eslintcache
+.prettierignore
+frontend/.eslintcache
+
+# ===========================
+# AI/ML & Data Science
+# ===========================
+
+# Model files
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.pt
+*.pth
+*.onnx
+*.pb
+*.tflite
+*.caffemodel
+*.model
+*.weights
+checkpoint/
+checkpoints/
+models/
+saved_models/
+ml-services/*/models/
+ml-services/*/checkpoints/
+
+# Training artifacts
+runs/
+logs/
+tensorboard/
+wandb/
+mlruns/
+outputs/
+experiments/
+
+# Data files
+data/
+datasets/
+*.csv
+*.parquet
+*.feather
+*.msgpack
+*.xlsx
+*.xls
+raw_data/
+processed_data/
+training_data/
+test_data/
+validation_data/
+
+# Large files
+*.tar
+*.tar.gz
+*.zip
+*.7z
+*.rar
+*.bz2
+
+# Embeddings & vectors
+embeddings/
+vectors/
+*.vec
+*.bin
+*.embeddings
+
+# ===========================
+# Databases & Storage
+# ===========================
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+*.dump
+*.rdb
+
+# PostgreSQL
+postgres-data/
+pgdata/
+*.backup
+
+# Neo4j
+neo4j-data/
+neo4j/data/
+*.graphdb
+
+# Redis
+dump.rdb
+redis-data/
+*.aof
+
+# Qdrant
+qdrant-data/
+qdrant_storage/
+collections/
+
+# MinIO
+minio-data/
+.minio.sys/
+buckets/
+
+# MongoDB (if used)
+*.bson
+mongod.lock
+
+# ===========================
+# Docker & Containerization
+# ===========================
+
+# Docker volumes
+volumes/
+docker-volumes/
+*.dockerignore
+
+# Docker Compose override
+docker-compose.override.yml
+docker-compose.override.yaml
+docker-compose.local.yml
+docker-compose.local.yaml
+
+# Container data
+container-data/
+
+# ===========================
+# Environment & Configuration
+# ===========================
+
+# Environment variables
+.env
+.env.*
+!.env.example
+!.env.template
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+*.env
+!*.env.example
+
+# Backup files
+*.backup
+*.backup.*
+.env.backup.*
+backup/
+backups/
+
+# Configuration overrides
+config.local.yml
+config.local.yaml
+config.local.json
+settings.local.json
+*.local
+
+# ===========================
+# IDEs & Editors
+# ===========================
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+.history/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.idea_modules/
+
+# PyCharm
+.PyCharm*/
+
+# Eclipse
+.project
+.classpath
+.settings/
+.metadata
+bin/
+tmp/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*.swn
+*.vim
+.netrwhist
+*~
+Session.vim
+tags
+
+# Emacs
+*~
+\#*\#
+.\#*
+.emacs.desktop
+.emacs.desktop.lock
+
+# ===========================
+# Operating System
+# ===========================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+.directory
+.Trash-*
+.nfs*
+
+# ===========================
+# Security & Secrets
+# ===========================
+
+# Private keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+private_key*
+id_rsa*
+id_dsa*
+id_ecdsa*
+id_ed25519*
+
+# Credentials
+credentials/
+secrets/
+*.secret
+*.secrets
+.secrets/
+.credentials/
+api_keys.json
+service-account.json
+firebase-admin.json
+
+# AWS
+.aws/
+aws-exports.js
+
+# Google Cloud
+.gcloud/
+gcloud-key.json
+
+# Azure
+.azure/
+azure.json
+
+# ===========================
+# Development Tools
+# ===========================
+
+# Git
+*.orig
+*.rej
+*.patch
+.git-rewrite/
+
+# Pre-commit
+.pre-commit-config.yaml.lock
+
+# Make
+.make/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraformrc
+terraform.rc
+
+# Ansible
+*.retry
+ansible.log
+
+# ===========================
+# Logging & Monitoring
+# ===========================
+
+# Logs
+logs/
+*.log
+*.log.*
+log/
+logging/
+debug.log
+error.log
+access.log
+
+# Monitoring
+.monitoring/
+metrics/
+traces/
+.opentelemetry/
+
+# ===========================
+# Build & Compilation
+# ===========================
+
+# Build directories
+build/
+dist/
+out/
+target/
+.build/
+
+# Compilation artifacts
+*.o
+*.obj
+*.elf
+*.lib
+*.a
+*.la
+*.lo
+*.dll
+*.so
+*.so.*
+*.dylib
+*.exe
+*.out
+*.app
+*.class
+*.jar
+*.war
+*.ear
+
+# ===========================
+# Documentation
+# ===========================
+
+# Generated documentation
+docs/_build/
+docs/build/
+site/
+.docusaurus/
+api-docs/
+generated-docs/
+
+# Sphinx
+_build/
+_static/
+_templates/
+
+# ===========================
+# Temporary Files
+# ===========================
+
+# Temporary directories
+tmp/
+temp/
+.tmp/
+.temp/
+cache/
+.cache/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+.~*
+
+# Lock files (except package managers)
+*.lock
+!package-lock.json
+!yarn.lock
+!pnpm-lock.yaml
+!Pipfile.lock
+!poetry.lock
+!composer.lock
+
+# ===========================
+# Testing & Quality
+# ===========================
+
+# Test databases
+test.db
+test.sqlite
+
+# Benchmarks
+benchmarks/
+benchmark_results/
+
+# Profiling
+*.prof
+*.profile
+profiling/
+.profiling/
+
+# Static analysis
+.scannerwork/
+.sonar/
+.sonarlint/
+
+# ===========================
+# Project Specific
+# ===========================
+
+# Memory bank (keep structure, ignore sensitive data)
+memory-bank/*.backup
+memory-bank/.cache/
+memory-bank/temp/
+
+# Phase files backups
+phase*.backup
+
+# Scripts output
+scripts/output/
+scripts/logs/
+
+# K8s local
+k8s/local/
+k8s/*.local.yaml
+
+# Custom rules (from .clinerules if needed)
+# Add any patterns from .clinerules here
+
+# ===========================
+# Miscellaneous
+# ===========================
+
+# Archives
+*.tar
+*.gz
+*.zip
+*.7z
+*.rar
+
+# Media files (unless needed)
+*.mp4
+*.avi
+*.mov
+*.mp3
+*.wav
+
+# Office files
+~$*.doc*
+~$*.xls*
+~$*.ppt*
+
+# PDF reports (keep documentation PDFs)
+reports/*.pdf
+output/*.pdf
+
+# Screenshots (unless documentation)
+screenshots/
+*.screenshot.png
+
+# ===========================
+# Keep These Files
+# ===========================
+
+# Important configuration templates
+!.env.example
+!.env.template
+!*.example
+!*.template
+!*.sample
+
+# Documentation
+!README.md
+!CONTRIBUTING.md
+!LICENSE
+!CHANGELOG.md
+!CLAUDE.md
+!docs/**/*.md
+!memory-bank/*.md
+!prompts/*.md
+
+# Configuration files
+!.gitignore
+!.dockerignore
+!.editorconfig
+!.prettierrc
+!.eslintrc*
+!tsconfig.json
+!package.json
+!requirements.txt
+!requirements*.txt
+!Pipfile
+!poetry.toml
+!pyproject.toml
+!Makefile
+!docker-compose.yml
+!docker-compose.yaml
+
+# CI/CD
+!.github/
+!.gitlab-ci.yml
+!.circleci/
+!azure-pipelines.yml
+
+# Important project files
+!phase*.md
+!setup.sh
+!quick-start.sh
+!status-final.sh
+!stop.sh

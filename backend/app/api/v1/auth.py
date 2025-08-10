@@ -3,7 +3,7 @@ Authentication endpoints for user registration, login, and token management.
 """
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -20,6 +20,8 @@ from app.core.security import (
 from app.core.config import settings
 from app.models.user import User
 from app.models.tenant import Tenant
+from app.models.refresh_token import RefreshToken
+from app.services.auth_service import AuthService
 from app.schemas.user import (
     UserCreate,
     UserResponse,
@@ -28,6 +30,13 @@ from app.schemas.user import (
     TokenPayload,
     PasswordReset,
     PasswordResetConfirm
+)
+from app.schemas.auth import (
+    TokenPair,
+    RefreshTokenRequest,
+    LoginRequest,
+    LogoutRequest,
+    ActiveSessionsResponse
 )
 
 router = APIRouter()
@@ -141,12 +150,13 @@ async def register(
     return db_user
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=TokenPair)
 async def login(
-    credentials: UserLogin,
+    credentials: LoginRequest,
+    request: Request,
     db: AsyncSession = Depends(get_async_session)
 ):
-    """Login user and return access token."""
+    """Login user and return access/refresh token pair."""
     # Find user by email
     result = await db.execute(select(User).where(User.email == credentials.email))
     user = result.scalar_one_or_none()
@@ -168,67 +178,82 @@ async def login(
     user.last_login = datetime.utcnow()
     await db.commit()
     
-    # Create tokens
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.email, "tenant_id": user.tenant_id},
-        expires_delta=access_token_expires
-    )
-    refresh_token = create_refresh_token(
-        data={"sub": user.email, "tenant_id": user.tenant_id}
+    # Get device info and IP
+    device_info = credentials.device_info or request.headers.get("User-Agent", "Unknown")
+    ip_address = request.client.host if request.client else None
+    
+    # Create tokens using auth service
+    auth_service = AuthService(db)
+    token_pair = await auth_service.create_token_pair(
+        user=user,
+        device_info=device_info,
+        ip_address=ip_address
     )
     
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
-    }
+    await db.commit()
+    return token_pair
 
 
-@router.post("/refresh", response_model=Token)
+@router.post("/refresh", response_model=TokenPair)
 async def refresh_token(
-    refresh_token: str,
+    token_request: RefreshTokenRequest,
+    request: Request,
     db: AsyncSession = Depends(get_async_session)
 ):
-    """Refresh access token using refresh token."""
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate refresh token",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+    """Refresh access token using refresh token with rotation."""
+    auth_service = AuthService(db)
     
-    payload = verify_token(refresh_token)
-    if payload is None or payload.get("type") != "refresh":
-        raise credentials_exception
+    # Get device info and IP
+    device_info = request.headers.get("User-Agent", "Unknown")
+    ip_address = request.client.host if request.client else None
     
-    email: str = payload.get("sub")
-    if email is None:
-        raise credentials_exception
-    
-    # Verify user still exists and is active
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalar_one_or_none()
-    
-    if not user or not user.is_active:
-        raise credentials_exception
-    
-    # Create new tokens
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    new_access_token = create_access_token(
-        data={"sub": user.email, "tenant_id": user.tenant_id},
-        expires_delta=access_token_expires
-    )
-    new_refresh_token = create_refresh_token(
-        data={"sub": user.email, "tenant_id": user.tenant_id}
-    )
-    
-    return {
-        "access_token": new_access_token,
-        "refresh_token": new_refresh_token,
-        "token_type": "bearer",
-        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
-    }
+    try:
+        token_pair = await auth_service.refresh_tokens(
+            refresh_token=token_request.refresh_token,
+            device_info=device_info,
+            ip_address=ip_address
+        )
+        await db.commit()
+        return token_pair
+    except ValueError as e:
+        # Map specific errors to appropriate HTTP status codes
+        error_message = str(e)
+        if "expired" in error_message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has expired",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        elif "revoked" in error_message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        elif "family" in error_message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token family has been invalidated due to security violation",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        elif "lifetime" in error_message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Maximum token lifetime exceeded",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        elif "inactive" in error_message.lower():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User account is inactive",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
 
 @router.post("/password-reset", status_code=status.HTTP_200_OK)
@@ -306,8 +331,72 @@ async def get_current_user_profile(
 
 @router.post("/logout", status_code=status.HTTP_200_OK)
 async def logout(
-    current_user: User = Depends(get_current_user)
+    logout_request: Optional[LogoutRequest] = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session)
 ):
-    """Logout user (client should discard token)."""
-    # In a more complex system, we might blacklist the token here
-    return {"message": "Successfully logged out"}
+    """Logout user and revoke refresh tokens."""
+    auth_service = AuthService(db)
+    
+    # Revoke all user tokens if requested or just current session
+    if logout_request and logout_request.all_devices:
+        await auth_service.revoke_all_user_tokens(
+            user_id=str(current_user.id),
+            reason="User logout from all devices"
+        )
+        message = "Successfully logged out from all devices"
+    else:
+        # In production, we would track the specific token family
+        # For now, revoke all tokens (can be improved with session tracking)
+        await auth_service.revoke_all_user_tokens(
+            user_id=str(current_user.id),
+            reason="User logout"
+        )
+        message = "Successfully logged out"
+    
+    await db.commit()
+    return {"message": message}
+
+
+@router.get("/sessions", response_model=ActiveSessionsResponse)
+async def get_active_sessions(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Get all active sessions for the current user."""
+    auth_service = AuthService(db)
+    sessions = await auth_service.get_active_sessions(str(current_user.id))
+    
+    return ActiveSessionsResponse(
+        sessions=sessions,
+        total=len(sessions)
+    )
+
+
+@router.delete("/sessions/{session_id}", status_code=status.HTTP_200_OK)
+async def revoke_session(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Revoke a specific session."""
+    # Verify the session belongs to the current user
+    result = await db.execute(
+        select(RefreshToken).where(
+            RefreshToken.id == session_id,
+            RefreshToken.user_id == current_user.id
+        )
+    )
+    token = result.scalar_one_or_none()
+    
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found"
+        )
+    
+    if token.is_active:
+        token.revoke("User revoked session")
+        await db.commit()
+    
+    return {"message": "Session revoked successfully"}

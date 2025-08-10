@@ -45,3 +45,18 @@ class ProcessingError(LegalAIException):
 class AIServiceError(LegalAIException):
     """Raised when AI service operations fail."""
     pass
+
+
+class ReportError(LegalAIException):
+    """Base exception for report-related errors."""
+    pass
+
+
+class PermissionError(LegalAIException):
+    """Raised when user lacks required permissions for a specific resource."""
+    pass
+
+
+class InvalidFileTypeError(LegalAIException):
+    """Raised when file type is not supported."""
+    pass

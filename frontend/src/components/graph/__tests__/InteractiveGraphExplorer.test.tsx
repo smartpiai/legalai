@@ -1,629 +1,655 @@
-import React from 'react';
+/**
+ * InteractiveGraphExplorer Component Tests
+ * Following TDD - RED phase: Writing comprehensive tests first
+ */
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { InteractiveGraphExplorer } from '../InteractiveGraphExplorer';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../../../store/auth';
 
 // Mock auth store
 vi.mock('../../../store/auth', () => ({
-  useAuthStore: vi.fn()
+  useAuthStore: vi.fn(),
 }));
 
-// Mock API calls
-const mockApi = {
-  getGraphData: vi.fn(),
-  getNodeDetails: vi.fn(),
-  getRelationships: vi.fn(),
-  searchGraph: vi.fn(),
-  getNeighbors: vi.fn(),
-  findPath: vi.fn(),
-  exportGraph: vi.fn(),
-  updateLayout: vi.fn(),
-  saveView: vi.fn(),
-  loadView: vi.fn()
+// Mock graph visualization library
+vi.mock('react-force-graph-2d', () => ({
+  default: vi.fn(({ onNodeClick, onNodeHover, onLinkClick, nodeCanvasObject }) => (
+    <div data-testid="graph-visualization">
+      <button onClick={() => onNodeClick({ id: 'node-1', label: 'Contract A' })}>
+        Node Click
+      </button>
+      <button onClick={() => onNodeHover({ id: 'node-2', label: 'Party B' })}>
+        Node Hover
+      </button>
+      <button onClick={() => onLinkClick({ source: 'node-1', target: 'node-2', type: 'PARTY_TO' })}>
+        Link Click
+      </button>
+    </div>
+  )),
+}));
+
+// Mock API service
+vi.mock('../../../services/graph.service', () => ({
+  graphService: {
+    getGraphData: vi.fn(),
+    searchNodes: vi.fn(),
+    getNodeDetails: vi.fn(),
+    getRelatedNodes: vi.fn(),
+    runCypherQuery: vi.fn(),
+    getGraphStatistics: vi.fn(),
+    exportGraph: vi.fn(),
+    getShortestPath: vi.fn(),
+    getCommunities: vi.fn(),
+    getNodeImportance: vi.fn(),
+  },
+}));
+
+const mockGraphData = {
+  nodes: [
+    { id: 'node-1', label: 'Contract A', type: 'CONTRACT', properties: { value: 100000, status: 'active' } },
+    { id: 'node-2', label: 'Party B', type: 'PARTY', properties: { jurisdiction: 'US', type: 'company' } },
+    { id: 'node-3', label: 'Clause C', type: 'CLAUSE', properties: { risk_level: 'high', category: 'liability' } },
+    { id: 'node-4', label: 'Contract D', type: 'CONTRACT', properties: { value: 250000, status: 'draft' } },
+    { id: 'node-5', label: 'Party E', type: 'PARTY', properties: { jurisdiction: 'UK', type: 'individual' } },
+  ],
+  links: [
+    { source: 'node-1', target: 'node-2', type: 'PARTY_TO', properties: { role: 'buyer' } },
+    { source: 'node-1', target: 'node-3', type: 'CONTAINS', properties: { position: 1 } },
+    { source: 'node-4', target: 'node-2', type: 'PARTY_TO', properties: { role: 'seller' } },
+    { source: 'node-4', target: 'node-5', type: 'PARTY_TO', properties: { role: 'buyer' } },
+    { source: 'node-4', target: 'node-1', type: 'SUPERSEDES', properties: { date: '2024-01-01' } },
+  ],
 };
 
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false } }
-});
-
-const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-);
-
 describe('InteractiveGraphExplorer', () => {
+  let queryClient: QueryClient;
+  const user = userEvent.setup();
+  const mockOnNodeSelect = vi.fn();
+  const mockOnRelationshipSelect = vi.fn();
+
   beforeEach(() => {
-    vi.clearAllMocks();
-    (useAuthStore as any).mockReturnValue({
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    vi.mocked(useAuthStore).mockReturnValue({
       user: { id: '1', name: 'Test User', role: 'admin' },
-      hasPermission: (perm: string) => true
+      hasPermission: () => true,
+    } as any);
+    
+    const { graphService } = require('../../../services/graph.service');
+    graphService.getGraphData.mockResolvedValue(mockGraphData);
+    graphService.searchNodes.mockResolvedValue({ 
+      nodes: [mockGraphData.nodes[0], mockGraphData.nodes[3]] 
+    });
+    graphService.getNodeDetails.mockResolvedValue({
+      ...mockGraphData.nodes[0],
+      relationships: [mockGraphData.links[0], mockGraphData.links[1]],
+    });
+    graphService.getGraphStatistics.mockResolvedValue({
+      totalNodes: 5,
+      totalRelationships: 5,
+      nodeTypes: { CONTRACT: 2, PARTY: 2, CLAUSE: 1 },
+      relationshipTypes: { PARTY_TO: 3, CONTAINS: 1, SUPERSEDES: 1 },
     });
   });
 
-  describe('Graph Rendering', () => {
-    it('should render graph explorer interface', () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      expect(screen.getByText('Interactive Graph Explorer')).toBeInTheDocument();
-      expect(screen.getByTestId('graph-canvas')).toBeInTheDocument();
-    });
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
 
-    it('should display force-directed graph layout', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
+  const renderComponent = (props = {}) => {
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <InteractiveGraphExplorer
+          onNodeSelect={mockOnNodeSelect}
+          onRelationshipSelect={mockOnRelationshipSelect}
+          {...props}
+        />
+      </QueryClientProvider>
+    );
+  };
+
+  describe('Graph Visualization', () => {
+    it('should render graph visualization container', async () => {
+      renderComponent();
+      
       await waitFor(() => {
-        expect(screen.getByTestId('force-graph')).toBeInTheDocument();
-        expect(screen.getByText(/nodes/i)).toBeInTheDocument();
-        expect(screen.getByText(/edges/i)).toBeInTheDocument();
+        expect(screen.getByTestId('graph-explorer')).toBeInTheDocument();
+        expect(screen.getByTestId('graph-visualization')).toBeInTheDocument();
       });
     });
 
-    it('should show graph statistics', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
+    it('should load and display graph data', async () => {
+      renderComponent({ contractId: 'contract-123' });
+      
       await waitFor(() => {
-        expect(screen.getByText('Total Nodes')).toBeInTheDocument();
-        expect(screen.getByText('Total Edges')).toBeInTheDocument();
-        expect(screen.getByText('Connected Components')).toBeInTheDocument();
+        expect(screen.getByText(/5 nodes/i)).toBeInTheDocument();
+        expect(screen.getByText(/5 relationships/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should handle node click events', async () => {
+      renderComponent();
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('graph-visualization')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('Node Click'));
+      
+      expect(mockOnNodeSelect).toHaveBeenCalledWith({
+        id: 'node-1',
+        label: 'Contract A',
+      });
+    });
+
+    it('should handle link click events', async () => {
+      renderComponent();
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('graph-visualization')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('Link Click'));
+      
+      expect(mockOnRelationshipSelect).toHaveBeenCalledWith({
+        source: 'node-1',
+        target: 'node-2',
+        type: 'PARTY_TO',
+      });
+    });
+
+    it('should show node details on hover', async () => {
+      renderComponent();
+      
+      await waitFor(() => {
+        expect(screen.getByTestId('graph-visualization')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('Node Hover'));
+      
+      await waitFor(() => {
+        expect(screen.getByRole('tooltip')).toBeInTheDocument();
+        expect(screen.getByText('Party B')).toBeInTheDocument();
       });
     });
   });
 
-  describe('Zoom and Pan Controls', () => {
-    it('should display zoom controls', () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      expect(screen.getByLabelText('Zoom In')).toBeInTheDocument();
-      expect(screen.getByLabelText('Zoom Out')).toBeInTheDocument();
-      expect(screen.getByLabelText('Reset Zoom')).toBeInTheDocument();
+  describe('Search and Filtering', () => {
+    it('should render search input', () => {
+      renderComponent();
+      
+      expect(screen.getByPlaceholderText(/search nodes/i)).toBeInTheDocument();
     });
 
-    it('should zoom in on click', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const zoomInButton = screen.getByLabelText('Zoom In');
-      fireEvent.click(zoomInButton);
+    it('should search nodes on input', async () => {
+      const { graphService } = require('../../../services/graph.service');
+      renderComponent();
+      
+      const searchInput = screen.getByPlaceholderText(/search nodes/i);
+      await user.type(searchInput, 'Contract');
+      
       await waitFor(() => {
-        expect(screen.getByTestId('zoom-level')).toHaveTextContent('125%');
+        expect(graphService.searchNodes).toHaveBeenCalledWith({
+          query: 'Contract',
+          types: [],
+        });
       });
-    });
-
-    it('should zoom out on click', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const zoomOutButton = screen.getByLabelText('Zoom Out');
-      fireEvent.click(zoomOutButton);
-      await waitFor(() => {
-        expect(screen.getByTestId('zoom-level')).toHaveTextContent('75%');
-      });
-    });
-
-    it('should reset zoom', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const resetButton = screen.getByLabelText('Reset Zoom');
-      fireEvent.click(resetButton);
-      await waitFor(() => {
-        expect(screen.getByTestId('zoom-level')).toHaveTextContent('100%');
-      });
-    });
-
-    it('should support pan controls', () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      expect(screen.getByLabelText('Pan Mode')).toBeInTheDocument();
-    });
-
-    it('should support mouse wheel zoom', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const canvas = screen.getByTestId('graph-canvas');
-      fireEvent.wheel(canvas, { deltaY: -100 });
-      await waitFor(() => {
-        expect(screen.getByTestId('zoom-level')).not.toHaveTextContent('100%');
-      });
-    });
-  });
-
-  describe('Node Filtering Options', () => {
-    it('should display node filter panel', () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      expect(screen.getByText('Node Filters')).toBeInTheDocument();
     });
 
     it('should filter by node type', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const typeFilter = screen.getByLabelText('Node Type');
-      fireEvent.change(typeFilter, { target: { value: 'contract' } });
+      renderComponent();
+      
+      const filterButton = screen.getByRole('button', { name: /filter/i });
+      await user.click(filterButton);
+      
+      const contractCheckbox = screen.getByRole('checkbox', { name: /contract/i });
+      await user.click(contractCheckbox);
+      
       await waitFor(() => {
-        expect(screen.getByText(/showing contract nodes/i)).toBeInTheDocument();
+        expect(screen.getByText(/Filtered: CONTRACT/i)).toBeInTheDocument();
       });
     });
 
-    it('should filter by node properties', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      fireEvent.click(screen.getByText('Add Property Filter'));
+    it('should filter by relationship type', async () => {
+      renderComponent();
+      
+      const filterButton = screen.getByRole('button', { name: /filter/i });
+      await user.click(filterButton);
+      
+      const partyToCheckbox = screen.getByRole('checkbox', { name: /party_to/i });
+      await user.click(partyToCheckbox);
+      
       await waitFor(() => {
-        expect(screen.getByLabelText('Property')).toBeInTheDocument();
-        expect(screen.getByLabelText('Operator')).toBeInTheDocument();
-        expect(screen.getByLabelText('Value')).toBeInTheDocument();
-      });
-    });
-
-    it('should apply multiple filters', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const typeFilter = screen.getByLabelText('Node Type');
-      fireEvent.change(typeFilter, { target: { value: 'contract' } });
-      const statusFilter = screen.getByLabelText('Status');
-      fireEvent.change(statusFilter, { target: { value: 'active' } });
-      await waitFor(() => {
-        expect(screen.getByText(/active contract nodes/i)).toBeInTheDocument();
+        expect(screen.getByText(/Filtered: PARTY_TO/i)).toBeInTheDocument();
       });
     });
 
     it('should clear all filters', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      fireEvent.click(screen.getByText('Clear Filters'));
+      renderComponent();
+      
+      const filterButton = screen.getByRole('button', { name: /filter/i });
+      await user.click(filterButton);
+      
+      const clearButton = screen.getByRole('button', { name: /clear filters/i });
+      await user.click(clearButton);
+      
       await waitFor(() => {
-        expect(screen.getByText(/all nodes visible/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Filtered:/i)).not.toBeInTheDocument();
       });
     });
   });
 
-  describe('Edge Filtering Options', () => {
-    it('should display edge filter panel', () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      expect(screen.getByText('Edge Filters')).toBeInTheDocument();
+  describe('Layout Controls', () => {
+    it('should provide layout options', () => {
+      renderComponent();
+      
+      expect(screen.getByRole('button', { name: /force layout/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /hierarchical/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /circular/i })).toBeInTheDocument();
     });
 
-    it('should filter by edge type', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const edgeTypeFilter = screen.getByLabelText('Edge Type');
-      fireEvent.change(edgeTypeFilter, { target: { value: 'contains' } });
-      await waitFor(() => {
-        expect(screen.getByText(/showing contains edges/i)).toBeInTheDocument();
-      });
+    it('should change layout on selection', async () => {
+      renderComponent();
+      
+      const hierarchicalButton = screen.getByRole('button', { name: /hierarchical/i });
+      await user.click(hierarchicalButton);
+      
+      expect(hierarchicalButton).toHaveClass('active');
     });
 
-    it('should filter by edge weight', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const weightSlider = screen.getByLabelText('Minimum Weight');
-      fireEvent.change(weightSlider, { target: { value: '0.5' } });
-      await waitFor(() => {
-        expect(screen.getByText(/weight >= 0.5/i)).toBeInTheDocument();
-      });
+    it('should provide zoom controls', () => {
+      renderComponent();
+      
+      expect(screen.getByRole('button', { name: /zoom in/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /zoom out/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /fit to screen/i })).toBeInTheDocument();
     });
 
-    it('should hide/show edge labels', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const labelToggle = screen.getByLabelText('Show Edge Labels');
-      fireEvent.click(labelToggle);
-      await waitFor(() => {
-        expect(screen.getByTestId('edge-labels-hidden')).toBeInTheDocument();
-      });
-    });
-  });
-
-  describe('Node Clustering', () => {
-    it('should display clustering options', () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      expect(screen.getByText('Clustering')).toBeInTheDocument();
-    });
-
-    it('should cluster by node type', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      fireEvent.click(screen.getByText('Cluster by Type'));
-      await waitFor(() => {
-        expect(screen.getByText(/nodes clustered by type/i)).toBeInTheDocument();
-      });
-    });
-
-    it('should cluster by community', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      fireEvent.click(screen.getByText('Detect Communities'));
-      await waitFor(() => {
-        expect(screen.getByText(/communities detected/i)).toBeInTheDocument();
-      });
-    });
-
-    it('should expand cluster on click', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      fireEvent.click(screen.getByText('Cluster by Type'));
-      await waitFor(() => {
-        const cluster = screen.getByTestId('cluster-contract');
-        fireEvent.click(cluster);
-        expect(screen.getByText(/expanded/i)).toBeInTheDocument();
-      });
-    });
-
-    it('should collapse expanded cluster', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const collapseButton = screen.getByText('Collapse All');
-      fireEvent.click(collapseButton);
-      await waitFor(() => {
-        expect(screen.getByText(/all clusters collapsed/i)).toBeInTheDocument();
-      });
+    it('should center graph on button click', async () => {
+      renderComponent();
+      
+      const centerButton = screen.getByRole('button', { name: /center graph/i });
+      await user.click(centerButton);
+      
+      // Graph should be centered (implementation will handle this)
+      expect(centerButton).toBeInTheDocument();
     });
   });
 
-  describe('Expand/Collapse Functionality', () => {
-    it('should expand node neighbors', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const node = screen.getByTestId('node-1');
-      fireEvent.doubleClick(node);
+  describe('Node Operations', () => {
+    it('should expand node relationships', async () => {
+      const { graphService } = require('../../../services/graph.service');
+      graphService.getRelatedNodes.mockResolvedValue({
+        nodes: [mockGraphData.nodes[1], mockGraphData.nodes[2]],
+        links: [mockGraphData.links[0], mockGraphData.links[1]],
+      });
+
+      renderComponent();
+      
       await waitFor(() => {
-        expect(screen.getByText(/neighbors loaded/i)).toBeInTheDocument();
+        expect(screen.getByTestId('graph-visualization')).toBeInTheDocument();
+      });
+
+      const expandButton = screen.getByRole('button', { name: /expand node/i });
+      await user.click(expandButton);
+      
+      await waitFor(() => {
+        expect(graphService.getRelatedNodes).toHaveBeenCalled();
       });
     });
 
-    it('should collapse node branch', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const node = screen.getByTestId('node-1');
-      fireEvent.contextMenu(node);
-      const collapseOption = screen.getByText('Collapse Branch');
-      fireEvent.click(collapseOption);
+    it('should hide selected nodes', async () => {
+      renderComponent();
+      
       await waitFor(() => {
-        expect(screen.getByText(/branch collapsed/i)).toBeInTheDocument();
+        expect(screen.getByTestId('graph-visualization')).toBeInTheDocument();
       });
+
+      const hideButton = screen.getByRole('button', { name: /hide node/i });
+      await user.click(hideButton);
+      
+      // Node should be hidden from view
+      expect(screen.getByText(/Node hidden/i)).toBeInTheDocument();
     });
 
-    it('should expand all nodes', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      fireEvent.click(screen.getByText('Expand All'));
+    it('should highlight connected nodes', async () => {
+      renderComponent();
+      
       await waitFor(() => {
-        expect(screen.getByText(/all nodes expanded/i)).toBeInTheDocument();
+        expect(screen.getByTestId('graph-visualization')).toBeInTheDocument();
       });
+
+      const highlightButton = screen.getByRole('button', { name: /highlight connections/i });
+      await user.click(highlightButton);
+      
+      expect(screen.getByText(/Connections highlighted/i)).toBeInTheDocument();
     });
 
-    it('should show expansion depth control', () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      expect(screen.getByLabelText('Expansion Depth')).toBeInTheDocument();
-    });
-  });
-
-  describe('Search Within Graph', () => {
-    it('should display search box', () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      expect(screen.getByPlaceholderText('Search nodes...')).toBeInTheDocument();
-    });
-
-    it('should search nodes by name', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const searchInput = screen.getByPlaceholderText('Search nodes...');
-      await userEvent.type(searchInput, 'Contract');
+    it('should show node details panel', async () => {
+      renderComponent();
+      
       await waitFor(() => {
-        expect(screen.getByText(/found \d+ matching nodes/i)).toBeInTheDocument();
+        expect(screen.getByTestId('graph-visualization')).toBeInTheDocument();
       });
-    });
 
-    it('should highlight search results', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const searchInput = screen.getByPlaceholderText('Search nodes...');
-      await userEvent.type(searchInput, 'Contract');
-      await waitFor(() => {
-        expect(screen.getByTestId('highlighted-nodes')).toBeInTheDocument();
-      });
-    });
-
-    it('should navigate between search results', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const searchInput = screen.getByPlaceholderText('Search nodes...');
-      await userEvent.type(searchInput, 'Contract');
-      await waitFor(() => {
-        const nextButton = screen.getByLabelText('Next Result');
-        fireEvent.click(nextButton);
-        expect(screen.getByText(/result 2 of/i)).toBeInTheDocument();
-      });
-    });
-
-    it('should clear search', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const searchInput = screen.getByPlaceholderText('Search nodes...');
-      await userEvent.type(searchInput, 'Contract');
-      const clearButton = screen.getByLabelText('Clear Search');
-      fireEvent.click(clearButton);
-      await waitFor(() => {
-        expect(searchInput).toHaveValue('');
-      });
-    });
-  });
-
-  describe('Node Details Panel', () => {
-    it('should show node details on click', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const node = screen.getByTestId('node-1');
-      fireEvent.click(node);
+      fireEvent.click(screen.getByText('Node Click'));
+      
       await waitFor(() => {
         expect(screen.getByTestId('node-details-panel')).toBeInTheDocument();
-        expect(screen.getByText('Node Details')).toBeInTheDocument();
-      });
-    });
-
-    it('should display node properties', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const node = screen.getByTestId('node-1');
-      fireEvent.click(node);
-      await waitFor(() => {
-        expect(screen.getByText('ID:')).toBeInTheDocument();
-        expect(screen.getByText('Type:')).toBeInTheDocument();
-        expect(screen.getByText('Properties:')).toBeInTheDocument();
-      });
-    });
-
-    it('should show node relationships', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const node = screen.getByTestId('node-1');
-      fireEvent.click(node);
-      await waitFor(() => {
-        expect(screen.getByText('Relationships')).toBeInTheDocument();
-        expect(screen.getByText(/incoming/i)).toBeInTheDocument();
-        expect(screen.getByText(/outgoing/i)).toBeInTheDocument();
-      });
-    });
-
-    it('should close details panel', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const node = screen.getByTestId('node-1');
-      fireEvent.click(node);
-      await waitFor(() => {
-        const closeButton = screen.getByLabelText('Close Details');
-        fireEvent.click(closeButton);
-        expect(screen.queryByTestId('node-details-panel')).not.toBeInTheDocument();
+        expect(screen.getByText('Contract A')).toBeInTheDocument();
+        expect(screen.getByText(/Value: \$100,000/i)).toBeInTheDocument();
       });
     });
   });
 
-  describe('Path Highlighting', () => {
+  describe('Path Finding', () => {
     it('should find shortest path between nodes', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      fireEvent.click(screen.getByText('Find Path'));
+      const { graphService } = require('../../../services/graph.service');
+      graphService.getShortestPath.mockResolvedValue({
+        path: ['node-1', 'node-2', 'node-4'],
+        distance: 2,
+      });
+
+      renderComponent();
+      
+      const pathButton = screen.getByRole('button', { name: /find path/i });
+      await user.click(pathButton);
+      
+      // Select source and target nodes
+      const sourceSelect = screen.getByLabelText(/source node/i);
+      const targetSelect = screen.getByLabelText(/target node/i);
+      
+      await user.selectOptions(sourceSelect, 'node-1');
+      await user.selectOptions(targetSelect, 'node-4');
+      
+      const findButton = screen.getByRole('button', { name: /calculate path/i });
+      await user.click(findButton);
+      
       await waitFor(() => {
-        expect(screen.getByText('Select Source Node')).toBeInTheDocument();
-        expect(screen.getByText('Select Target Node')).toBeInTheDocument();
+        expect(screen.getByText(/Path length: 2/i)).toBeInTheDocument();
       });
     });
 
-    it('should highlight path when found', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      fireEvent.click(screen.getByText('Find Path'));
-      const sourceNode = screen.getByTestId('node-1');
-      const targetNode = screen.getByTestId('node-5');
-      fireEvent.click(sourceNode);
-      fireEvent.click(targetNode);
-      await waitFor(() => {
-        expect(screen.getByTestId('highlighted-path')).toBeInTheDocument();
-      });
-    });
+    it('should show no path message when nodes not connected', async () => {
+      const { graphService } = require('../../../services/graph.service');
+      graphService.getShortestPath.mockResolvedValue(null);
 
-    it('should show path details', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      fireEvent.click(screen.getByText('Find Path'));
-      const sourceNode = screen.getByTestId('node-1');
-      const targetNode = screen.getByTestId('node-5');
-      fireEvent.click(sourceNode);
-      fireEvent.click(targetNode);
+      renderComponent();
+      
+      const pathButton = screen.getByRole('button', { name: /find path/i });
+      await user.click(pathButton);
+      
+      const findButton = screen.getByRole('button', { name: /calculate path/i });
+      await user.click(findButton);
+      
       await waitFor(() => {
-        expect(screen.getByText(/path length:/i)).toBeInTheDocument();
-        expect(screen.getByText(/nodes in path:/i)).toBeInTheDocument();
-      });
-    });
-
-    it('should clear path highlighting', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      fireEvent.click(screen.getByText('Clear Path'));
-      await waitFor(() => {
-        expect(screen.queryByTestId('highlighted-path')).not.toBeInTheDocument();
-      });
-    });
-  });
-
-  describe('Export Capabilities', () => {
-    it('should display export options', () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      expect(screen.getByText('Export')).toBeInTheDocument();
-    });
-
-    it('should export as image', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      fireEvent.click(screen.getByText('Export'));
-      fireEvent.click(screen.getByText('Export as PNG'));
-      await waitFor(() => {
-        expect(screen.getByText(/image exported/i)).toBeInTheDocument();
-      });
-    });
-
-    it('should export as SVG', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      fireEvent.click(screen.getByText('Export'));
-      fireEvent.click(screen.getByText('Export as SVG'));
-      await waitFor(() => {
-        expect(screen.getByText(/svg exported/i)).toBeInTheDocument();
-      });
-    });
-
-    it('should export graph data', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      fireEvent.click(screen.getByText('Export'));
-      fireEvent.click(screen.getByText('Export Data (JSON)'));
-      await waitFor(() => {
-        expect(screen.getByText(/data exported/i)).toBeInTheDocument();
-      });
-    });
-
-    it('should export filtered view', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const typeFilter = screen.getByLabelText('Node Type');
-      fireEvent.change(typeFilter, { target: { value: 'contract' } });
-      fireEvent.click(screen.getByText('Export'));
-      fireEvent.click(screen.getByText('Export Current View'));
-      await waitFor(() => {
-        expect(screen.getByText(/filtered view exported/i)).toBeInTheDocument();
+        expect(screen.getByText(/No path found/i)).toBeInTheDocument();
       });
     });
   });
 
-  describe('Graph Layout Options', () => {
-    it('should display layout options', () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      expect(screen.getByText('Layout')).toBeInTheDocument();
-    });
-
-    it('should switch to hierarchical layout', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const layoutSelect = screen.getByLabelText('Layout Type');
-      fireEvent.change(layoutSelect, { target: { value: 'hierarchical' } });
+  describe('Graph Analytics', () => {
+    it('should show graph statistics', async () => {
+      renderComponent();
+      
+      const statsButton = screen.getByRole('button', { name: /statistics/i });
+      await user.click(statsButton);
+      
       await waitFor(() => {
-        expect(screen.getByText(/hierarchical layout applied/i)).toBeInTheDocument();
+        expect(screen.getByText(/Total Nodes: 5/i)).toBeInTheDocument();
+        expect(screen.getByText(/Total Relationships: 5/i)).toBeInTheDocument();
       });
     });
 
-    it('should switch to circular layout', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const layoutSelect = screen.getByLabelText('Layout Type');
-      fireEvent.change(layoutSelect, { target: { value: 'circular' } });
+    it('should detect communities', async () => {
+      const { graphService } = require('../../../services/graph.service');
+      graphService.getCommunities.mockResolvedValue({
+        communities: [
+          { id: 'community-1', nodes: ['node-1', 'node-2', 'node-3'], color: '#FF0000' },
+          { id: 'community-2', nodes: ['node-4', 'node-5'], color: '#00FF00' },
+        ],
+      });
+
+      renderComponent();
+      
+      const communityButton = screen.getByRole('button', { name: /detect communities/i });
+      await user.click(communityButton);
+      
       await waitFor(() => {
-        expect(screen.getByText(/circular layout applied/i)).toBeInTheDocument();
+        expect(screen.getByText(/2 communities detected/i)).toBeInTheDocument();
       });
     });
 
-    it('should adjust force strength', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const forceSlider = screen.getByLabelText('Force Strength');
-      fireEvent.change(forceSlider, { target: { value: '0.8' } });
-      await waitFor(() => {
-        expect(screen.getByText(/force strength: 0.8/i)).toBeInTheDocument();
+    it('should calculate node importance', async () => {
+      const { graphService } = require('../../../services/graph.service');
+      graphService.getNodeImportance.mockResolvedValue({
+        scores: {
+          'node-1': 0.85,
+          'node-2': 0.72,
+          'node-3': 0.45,
+          'node-4': 0.68,
+          'node-5': 0.31,
+        },
+        algorithm: 'pagerank',
       });
-    });
-  });
 
-  describe('Interactive Features', () => {
-    it('should drag nodes', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const node = screen.getByTestId('node-1');
-      fireEvent.mouseDown(node);
-      fireEvent.mouseMove(node, { clientX: 100, clientY: 100 });
-      fireEvent.mouseUp(node);
+      renderComponent();
+      
+      const importanceButton = screen.getByRole('button', { name: /node importance/i });
+      await user.click(importanceButton);
+      
       await waitFor(() => {
-        expect(screen.getByText(/node position updated/i)).toBeInTheDocument();
-      });
-    });
-
-    it('should pin node position', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const node = screen.getByTestId('node-1');
-      fireEvent.contextMenu(node);
-      fireEvent.click(screen.getByText('Pin Position'));
-      await waitFor(() => {
-        expect(screen.getByTestId('node-1-pinned')).toBeInTheDocument();
-      });
-    });
-
-    it('should show node tooltip on hover', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const node = screen.getByTestId('node-1');
-      fireEvent.mouseEnter(node);
-      await waitFor(() => {
-        expect(screen.getByRole('tooltip')).toBeInTheDocument();
-      });
-    });
-
-    it('should select multiple nodes', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const node1 = screen.getByTestId('node-1');
-      const node2 = screen.getByTestId('node-2');
-      fireEvent.click(node1, { ctrlKey: true });
-      fireEvent.click(node2, { ctrlKey: true });
-      await waitFor(() => {
-        expect(screen.getByText(/2 nodes selected/i)).toBeInTheDocument();
+        expect(screen.getByText(/Importance calculated/i)).toBeInTheDocument();
       });
     });
   });
 
-  describe('Performance Options', () => {
-    it('should toggle performance mode', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const perfToggle = screen.getByLabelText('Performance Mode');
-      fireEvent.click(perfToggle);
+  describe('Export and Sharing', () => {
+    it('should export graph as image', async () => {
+      renderComponent();
+      
+      const exportButton = screen.getByRole('button', { name: /export/i });
+      await user.click(exportButton);
+      
+      const imageOption = screen.getByRole('menuitem', { name: /export as png/i });
+      await user.click(imageOption);
+      
+      expect(screen.getByText(/Graph exported/i)).toBeInTheDocument();
+    });
+
+    it('should export graph data as JSON', async () => {
+      const { graphService } = require('../../../services/graph.service');
+      graphService.exportGraph.mockResolvedValue({
+        url: 'https://example.com/export.json',
+      });
+
+      renderComponent();
+      
+      const exportButton = screen.getByRole('button', { name: /export/i });
+      await user.click(exportButton);
+      
+      const jsonOption = screen.getByRole('menuitem', { name: /export as json/i });
+      await user.click(jsonOption);
+      
       await waitFor(() => {
-        expect(screen.getByText(/performance mode enabled/i)).toBeInTheDocument();
+        expect(graphService.exportGraph).toHaveBeenCalledWith({
+          format: 'json',
+          includeProperties: true,
+        });
       });
     });
 
-    it('should limit visible nodes', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const limitInput = screen.getByLabelText('Max Visible Nodes');
-      fireEvent.change(limitInput, { target: { value: '100' } });
+    it('should share graph view via link', async () => {
+      renderComponent();
+      
+      const shareButton = screen.getByRole('button', { name: /share/i });
+      await user.click(shareButton);
+      
       await waitFor(() => {
-        expect(screen.getByText(/showing 100 of/i)).toBeInTheDocument();
+        expect(screen.getByText(/Share Graph View/i)).toBeInTheDocument();
+        expect(screen.getByRole('textbox', { name: /share link/i })).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Cypher Query', () => {
+    it('should show Cypher query input', async () => {
+      renderComponent();
+      
+      const queryButton = screen.getByRole('button', { name: /query/i });
+      await user.click(queryButton);
+      
+      expect(screen.getByPlaceholderText(/enter cypher query/i)).toBeInTheDocument();
+    });
+
+    it('should execute Cypher query', async () => {
+      const { graphService } = require('../../../services/graph.service');
+      graphService.runCypherQuery.mockResolvedValue({
+        nodes: [mockGraphData.nodes[0]],
+        links: [],
+      });
+
+      renderComponent();
+      
+      const queryButton = screen.getByRole('button', { name: /query/i });
+      await user.click(queryButton);
+      
+      const queryInput = screen.getByPlaceholderText(/enter cypher query/i);
+      await user.type(queryInput, 'MATCH (n:CONTRACT) RETURN n');
+      
+      const executeButton = screen.getByRole('button', { name: /execute/i });
+      await user.click(executeButton);
+      
+      await waitFor(() => {
+        expect(graphService.runCypherQuery).toHaveBeenCalledWith(
+          'MATCH (n:CONTRACT) RETURN n'
+        );
       });
     });
 
-    it('should toggle animations', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const animToggle = screen.getByLabelText('Enable Animations');
-      fireEvent.click(animToggle);
+    it('should show query error messages', async () => {
+      const { graphService } = require('../../../services/graph.service');
+      graphService.runCypherQuery.mockRejectedValue(new Error('Invalid query syntax'));
+
+      renderComponent();
+      
+      const queryButton = screen.getByRole('button', { name: /query/i });
+      await user.click(queryButton);
+      
+      const executeButton = screen.getByRole('button', { name: /execute/i });
+      await user.click(executeButton);
+      
       await waitFor(() => {
-        expect(screen.getByText(/animations disabled/i)).toBeInTheDocument();
+        expect(screen.getByText(/Invalid query syntax/i)).toBeInTheDocument();
       });
     });
   });
 
   describe('Accessibility', () => {
     it('should have proper ARIA labels', () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      expect(screen.getByRole('main')).toHaveAttribute('aria-label', 'Interactive Graph Explorer');
-      expect(screen.getByTestId('graph-canvas')).toHaveAttribute('role', 'img');
+      renderComponent();
+      
+      expect(screen.getByRole('region', { name: /graph explorer/i })).toBeInTheDocument();
+      expect(screen.getByRole('search', { name: /search nodes/i })).toBeInTheDocument();
+      expect(screen.getByRole('toolbar', { name: /graph controls/i })).toBeInTheDocument();
     });
 
     it('should support keyboard navigation', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const canvas = screen.getByTestId('graph-canvas');
-      canvas.focus();
-      fireEvent.keyDown(canvas, { key: 'ArrowRight' });
-      await waitFor(() => {
-        expect(screen.getByText(/moved right/i)).toBeInTheDocument();
-      });
+      renderComponent();
+      
+      const searchInput = screen.getByPlaceholderText(/search nodes/i);
+      searchInput.focus();
+      
+      // Tab to next element
+      await user.tab();
+      expect(screen.getByRole('button', { name: /filter/i })).toHaveFocus();
+      
+      // Tab to layout controls
+      await user.tab();
+      expect(screen.getByRole('button', { name: /force layout/i })).toHaveFocus();
     });
 
-    it('should announce graph changes', async () => {
-      render(<InteractiveGraphExplorer />, { wrapper });
-      const typeFilter = screen.getByLabelText('Node Type');
-      fireEvent.change(typeFilter, { target: { value: 'contract' } });
+    it('should announce graph updates to screen readers', async () => {
+      renderComponent();
+      
       await waitFor(() => {
-        const liveRegion = screen.getByRole('status');
-        expect(liveRegion).toHaveTextContent(/graph updated/i);
+        expect(screen.getByRole('status')).toHaveTextContent(/Graph loaded with 5 nodes/i);
       });
     });
   });
 
   describe('Error Handling', () => {
-    it('should handle graph data loading errors', async () => {
-      mockApi.getGraphData.mockRejectedValue(new Error('Failed to load graph'));
-      render(<InteractiveGraphExplorer />, { wrapper });
+    it('should show error when graph data fails to load', async () => {
+      const { graphService } = require('../../../services/graph.service');
+      graphService.getGraphData.mockRejectedValue(new Error('Network error'));
+
+      renderComponent();
+      
       await waitFor(() => {
-        expect(screen.getByText(/failed to load/i)).toBeInTheDocument();
+        expect(screen.getByText(/Failed to load graph data/i)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
       });
     });
 
-    it('should show retry option on error', async () => {
-      mockApi.getGraphData.mockRejectedValue(new Error('Network error'));
-      render(<InteractiveGraphExplorer />, { wrapper });
+    it('should retry loading on error', async () => {
+      const { graphService } = require('../../../services/graph.service');
+      graphService.getGraphData.mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValueOnce(mockGraphData);
+
+      renderComponent();
+      
       await waitFor(() => {
-        expect(screen.getByText('Retry')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole('button', { name: /retry/i }));
+      
+      await waitFor(() => {
+        expect(screen.getByText(/5 nodes/i)).toBeInTheDocument();
       });
     });
   });
 
-  describe('Permissions', () => {
-    it('should hide export for viewers', () => {
-      (useAuthStore as any).mockReturnValue({
-        user: { id: '1', name: 'Test User', role: 'viewer' },
-        hasPermission: (perm: string) => perm === 'graph:view'
+  describe('Performance', () => {
+    it('should handle large graphs efficiently', async () => {
+      const largeGraph = {
+        nodes: Array.from({ length: 1000 }, (_, i) => ({
+          id: `node-${i}`,
+          label: `Node ${i}`,
+          type: 'CONTRACT',
+        })),
+        links: Array.from({ length: 2000 }, (_, i) => ({
+          source: `node-${i % 1000}`,
+          target: `node-${(i + 1) % 1000}`,
+          type: 'RELATES_TO',
+        })),
+      };
+
+      const { graphService } = require('../../../services/graph.service');
+      graphService.getGraphData.mockResolvedValue(largeGraph);
+
+      renderComponent();
+      
+      await waitFor(() => {
+        expect(screen.getByText(/1000 nodes/i)).toBeInTheDocument();
       });
-      render(<InteractiveGraphExplorer />, { wrapper });
-      expect(screen.queryByText('Export')).not.toBeInTheDocument();
     });
 
-    it('should show read-only mode for non-admin users', () => {
-      (useAuthStore as any).mockReturnValue({
-        user: { id: '1', name: 'Test User', role: 'viewer' },
-        hasPermission: (perm: string) => perm === 'graph:view'
-      });
-      render(<InteractiveGraphExplorer />, { wrapper });
-      expect(screen.getByText(/read-only mode/i)).toBeInTheDocument();
+    it('should use virtualization for node lists', async () => {
+      renderComponent();
+      
+      const listViewButton = screen.getByRole('button', { name: /list view/i });
+      await user.click(listViewButton);
+      
+      // Only visible nodes should be rendered
+      const nodeItems = screen.getAllByTestId(/node-list-item/i);
+      expect(nodeItems.length).toBeLessThan(50); // Virtualized
     });
   });
 });

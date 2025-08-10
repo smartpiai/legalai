@@ -84,6 +84,12 @@ try:
 except ImportError:
     pass
 
+try:
+    from app.api.v1 import dashboard
+    api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
+except ImportError:
+    pass
+
 # Future endpoints can be added here
 # - analysis  
 # - integrations

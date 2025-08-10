@@ -1,7 +1,12 @@
+/**
+ * Data Pipeline Architecture Tests
+ * Following TDD - RED phase: Comprehensive test suite for data pipeline visualization and management
+ */
+
 import React from 'react';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DataPipelineArchitecture } from '../DataPipelineArchitecture';
 import { useAuthStore } from '../../../store/auth';

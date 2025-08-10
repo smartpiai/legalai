@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
+import { dashboardService } from '../../services/dashboard.service';
 import { ExecutiveDashboard } from '../../components/dashboard/ExecutiveDashboard';
 import { RecentActivityFeed } from '../../components/contracts/RecentActivityFeed';
 import { ContractAnalyticsView } from '../../components/analytics/ContractAnalyticsView';
@@ -44,6 +45,13 @@ interface Preferences {
   notifications: boolean;
 }
 
+interface DashboardData {
+  executiveSummary?: any;
+  contractMetrics?: any;
+  riskAnalytics?: any;
+  recentActivities?: any;
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
@@ -55,34 +63,11 @@ export default function DashboardPage() {
   const [showPreferences, setShowPreferences] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      title: 'Contract Review Required',
-      message: 'Contract CON-2024-001 requires review',
-      type: 'warning',
-      read: false,
-      timestamp: new Date().toISOString(),
-    },
-    {
-      id: '2',
-      title: 'Risk Alert',
-      message: 'New risk identified in procurement process',
-      type: 'error',
-      read: false,
-      timestamp: new Date().toISOString(),
-    },
-    {
-      id: '3',
-      title: 'Document Uploaded',
-      message: 'Service agreement uploaded successfully',
-      type: 'success',
-      read: true,
-      timestamp: new Date().toISOString(),
-    },
-  ]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [dashboardData, setDashboardData] = useState<DashboardData>({});
+  const [websocket, setWebsocket] = useState<any>(null);
   const [preferences, setPreferences] = useState<Preferences>({
     defaultView: 'executive',
     theme: 'light',
@@ -90,6 +75,55 @@ export default function DashboardPage() {
     notifications: true,
   });
   const [searchResults, setSearchResults] = useState<any[]>([]);
+
+  // Fetch dashboard data
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Fetch data based on current view
+      const promises: Promise<any>[] = [];
+      
+      if (currentView === 'executive') {
+        promises.push(dashboardService.getExecutiveSummary());
+      } else if (currentView === 'analytics') {
+        promises.push(dashboardService.getContractMetrics());
+      } else if (currentView === 'risk') {
+        promises.push(dashboardService.getRiskAnalytics());
+      } else if (currentView === 'activity') {
+        promises.push(dashboardService.getRecentActivities());
+      }
+
+      // Always fetch notifications
+      promises.push(dashboardService.getNotifications());
+
+      const results = await Promise.all(promises);
+      
+      // Update dashboard data
+      const newData: DashboardData = {};
+      if (currentView === 'executive') {
+        newData.executiveSummary = results[0];
+      } else if (currentView === 'analytics') {
+        newData.contractMetrics = results[0];
+      } else if (currentView === 'risk') {
+        newData.riskAnalytics = results[0];
+      } else if (currentView === 'activity') {
+        newData.recentActivities = results[0];
+      }
+      
+      setDashboardData(prev => ({ ...prev, ...newData }));
+      
+      // Update notifications (last promise result)
+      setNotifications(results[results.length - 1] || []);
+      
+    } catch (err) {
+      console.error('Failed to fetch dashboard data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentView]);
 
   // Load preferences from localStorage
   useEffect(() => {
@@ -103,6 +137,52 @@ export default function DashboardPage() {
       }
     }
   }, []);
+
+  // Fetch data when component mounts or view changes
+  useEffect(() => {
+    if (user) {
+      fetchDashboardData();
+    }
+  }, [user, currentView, fetchDashboardData]);
+
+  // Setup WebSocket connection
+  useEffect(() => {
+    if (!user) return;
+
+    const handleWebSocketMessage = (data: any) => {
+      // Handle real-time updates
+      if (data.type === 'notification') {
+        setNotifications(prev => [data.data, ...prev]);
+      } else if (data.type === 'contract_update') {
+        // Refresh dashboard data if contract is updated
+        fetchDashboardData();
+      }
+    };
+
+    const handleWebSocketError = (error: Error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    // Connect to WebSocket
+    dashboardService.connectWebSocket(handleWebSocketMessage, handleWebSocketError)
+      .then(ws => setWebsocket(ws))
+      .catch(err => console.error('Failed to connect WebSocket:', err));
+
+    return () => {
+      dashboardService.disconnectWebSocket();
+    };
+  }, [user, fetchDashboardData]);
+
+  // Auto-refresh based on preferences
+  useEffect(() => {
+    if (!preferences.refreshInterval || !user) return;
+
+    const interval = setInterval(() => {
+      fetchDashboardData();
+    }, preferences.refreshInterval * 1000);
+
+    return () => clearInterval(interval);
+  }, [preferences.refreshInterval, user, fetchDashboardData]);
 
   // Save view preference
   useEffect(() => {
@@ -164,14 +244,30 @@ export default function DashboardPage() {
     return () => clearTimeout(timer);
   }, [searchQuery, handleSearch]);
 
-  const handleNotificationRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, read: true } : n))
-    );
+  const handleNotificationRead = async (id: string) => {
+    try {
+      await dashboardService.markNotificationAsRead(id);
+      setNotifications(prev =>
+        prev.map(n => (n.id === id ? { ...n, read: true } : n))
+      );
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
   };
 
-  const handleClearAllNotifications = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  const handleClearAllNotifications = async () => {
+    try {
+      const result = await dashboardService.clearAllNotifications();
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      
+      // Show success message
+      const announcement = document.getElementById('live-region');
+      if (announcement) {
+        announcement.textContent = `${result.cleared_count} notifications cleared`;
+      }
+    } catch (error) {
+      console.error('Failed to clear notifications:', error);
+    }
   };
 
   const handlePreferencesSave = () => {
@@ -448,19 +544,37 @@ export default function DashboardPage() {
 
         {/* Dashboard Content */}
         <div className="bg-white rounded-lg shadow">
-          {currentView === 'executive' && (
-            <ExecutiveDashboard currentUser={user} />
-          )}
-          {currentView === 'analytics' && (
-            <ContractAnalyticsView />
-          )}
-          {currentView === 'risk' && (
-            <RiskAnalyticsDashboard currentUser={user} />
-          )}
-          {currentView === 'activity' && (
-            <div className="p-6">
-              <RecentActivityFeed />
+          {isLoading ? (
+            <div className="flex items-center justify-center p-12">
+              <div className="animate-spin h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
+          ) : (
+            <>
+              {currentView === 'executive' && (
+                <ExecutiveDashboard 
+                  currentUser={user} 
+                  data={dashboardData.executiveSummary}
+                />
+              )}
+              {currentView === 'analytics' && (
+                <ContractAnalyticsView 
+                  data={dashboardData.contractMetrics}
+                />
+              )}
+              {currentView === 'risk' && (
+                <RiskAnalyticsDashboard 
+                  currentUser={user}
+                  data={dashboardData.riskAnalytics}
+                />
+              )}
+              {currentView === 'activity' && (
+                <div className="p-6">
+                  <RecentActivityFeed 
+                    data={dashboardData.recentActivities}
+                  />
+                </div>
+              )}
+            </>
           )}
         </div>
 

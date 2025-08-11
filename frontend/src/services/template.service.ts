@@ -4,7 +4,7 @@
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import { authStore } from '../stores/authStore';
+import { useAuthStore } from '../store/auth';
 
 interface TemplateFilters {
   limit?: number;
@@ -86,7 +86,7 @@ export class TemplateService {
 
     // Add request interceptor for auth and tenant headers
     this.api.interceptors.request.use((config) => {
-      const state = authStore.getState();
+      const state = useAuthStore.getState();
       const token = state.token;
       const user = state.user;
 

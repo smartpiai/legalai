@@ -15,7 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { ShieldCheckIcon } from '@heroicons/react/24/solid';
 
-interface ValidationError {
+export interface ValidationError {
   code: string;
   message: string;
   severity: 'error' | 'critical';
@@ -23,14 +23,14 @@ interface ValidationError {
   details?: string;
 }
 
-interface ValidationWarning {
+export interface ValidationWarning {
   code: string;
   message: string;
   field?: string;
   suggestion?: string;
 }
 
-interface FileInfo {
+export interface FileInfo {
   name: string;
   size: number;
   type: string;
@@ -43,14 +43,14 @@ interface FileInfo {
   encoding?: string;
 }
 
-interface ValidationProgress {
+export interface ValidationProgress {
   currentStep: number;
   totalSteps: number;
   currentStepName: string;
   completedSteps: string[];
 }
 
-interface ValidationResult {
+export interface ValidationResult {
   isValid: boolean;
   errors: ValidationError[];
   warnings: ValidationWarning[];

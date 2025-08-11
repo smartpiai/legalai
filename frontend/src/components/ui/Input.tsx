@@ -34,6 +34,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       containerClassName,
       required,
       disabled,
+      readOnly,
       name,
       id: providedId,
       onChange,
@@ -122,6 +123,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             type={type}
             value={value}
             disabled={disabled}
+            readOnly={readOnly}
             required={required}
             className={inputClasses}
             aria-invalid={!!error}

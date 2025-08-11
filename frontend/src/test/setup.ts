@@ -43,6 +43,27 @@ global.ResizeObserver = vi.fn().mockImplementation(() => ({
 // Mock scrollTo (for navigation)
 window.scrollTo = vi.fn()
 
+// Mock alert (for user notifications)
+window.alert = vi.fn()
+
+// Mock URL.createObjectURL and URL.revokeObjectURL (for file downloads)
+Object.defineProperty(window, 'URL', {
+  value: {
+    createObjectURL: vi.fn(() => 'mocked-object-url'),
+    revokeObjectURL: vi.fn(),
+  },
+})
+
+// Mock location for test environment detection
+Object.defineProperty(window, 'location', {
+  value: {
+    href: 'http://localhost:3000/test',
+    origin: 'http://localhost:3000',
+    pathname: '/test',
+  },
+  writable: true,
+})
+
 // Mock localStorage
 const localStorageMock = {
   getItem: vi.fn(),

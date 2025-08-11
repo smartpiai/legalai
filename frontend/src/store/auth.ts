@@ -53,10 +53,13 @@ interface AuthData {
 }
 
 interface RegisterData {
+  firstName: string
+  lastName: string
   email: string
   password: string
-  full_name?: string
-  company_name?: string
+  organization?: string
+  department?: string
+  phone?: string
 }
 
 const initialState = {
@@ -125,7 +128,15 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: true, error: null })
           
           try {
-            const response = await authService.register(data)
+            // Transform data to match API expectations
+            const apiData = {
+              email: data.email,
+              password: data.password,
+              full_name: `${data.firstName} ${data.lastName}`,
+              company_name: data.organization || undefined,
+            }
+            
+            const response = await authService.register(apiData)
             
             const { access_token, refresh_token, user } = response
             

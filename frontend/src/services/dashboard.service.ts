@@ -4,7 +4,7 @@
  */
 
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import { authStore } from '../stores/authStore';
+import { useAuthStore } from '@/store/auth';
 
 interface ExecutiveSummary {
   total_contracts: number;
@@ -137,7 +137,7 @@ export class DashboardService {
 
     // Add request interceptor for auth and tenant headers
     this.api.interceptors.request.use((config) => {
-      const state = authStore.getState();
+      const state = useAuthStore.getState();
       const token = state.token;
       const user = state.user;
 
@@ -400,7 +400,7 @@ export class DashboardService {
     onMessage: (data: any) => void,
     onError: (error: Error) => void
   ): Promise<MockWebSocket> {
-    const token = authStore.getState().token;
+    const token = useAuthStore.getState().token;
     const wsUrl = `${import.meta.env.VITE_WS_URL || 'ws://localhost:8000'}/ws/dashboard?token=${token}`;
 
     // For testing, return a mock WebSocket

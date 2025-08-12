@@ -26,15 +26,22 @@ def get_database_url(test: bool = False) -> str:
 
 
 # PostgreSQL
-async_engine = create_async_engine(
-    get_database_url(),
-    echo=False,
-    future=True,
-    pool_pre_ping=True,
-    pool_size=5,
-    max_overflow=10,
-    poolclass=NullPool if os.getenv("TESTING") else None,
-)
+if os.getenv("TESTING"):
+    async_engine = create_async_engine(
+        get_database_url(),
+        echo=False,
+        future=True,
+        poolclass=NullPool,
+    )
+else:
+    async_engine = create_async_engine(
+        get_database_url(),
+        echo=False,
+        future=True,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=10,
+    )
 
 AsyncSessionLocal = async_sessionmaker(
     async_engine, 

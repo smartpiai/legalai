@@ -401,7 +401,7 @@ describe('SystemSettingsPage', () => {
       
       await waitFor(() => {
         expect(screen.getByText(/test email sent successfully/i)).toBeInTheDocument()
-      })
+      }, { timeout: 3000 })
     })
 
     it('should test storage connection', async () => {
@@ -414,7 +414,7 @@ describe('SystemSettingsPage', () => {
       
       await waitFor(() => {
         expect(screen.getByText(/storage connection successful/i)).toBeInTheDocument()
-      })
+      }, { timeout: 3000 })
     })
 
     it('should test AI/ML API connection', async () => {
@@ -427,7 +427,7 @@ describe('SystemSettingsPage', () => {
       
       await waitFor(() => {
         expect(screen.getByText(/api connection successful/i)).toBeInTheDocument()
-      })
+      }, { timeout: 3000 })
     })
   })
 

@@ -1,0 +1,34 @@
+CONTRACT AGREEMENT
+
+This Contract Agreement ("Agreement") is entered into on [DATE], between:
+
+Party A: Test Company Inc.
+Address: 123 Test Street, Test City, TC 12345
+Email: contracts@testcompany.com
+
+Party B: Counterparty Corporation
+Address: 456 Partner Avenue, Partner City, PC 67890
+Email: legal@counterparty.com
+
+TERMS AND CONDITIONS:
+
+1. SCOPE OF WORK
+   The parties agree to the following terms and conditions for the provision of services.
+
+2. PAYMENT TERMS
+   Payment shall be made within thirty (30) days of invoice receipt.
+   Total contract value: $50,000.00
+
+3. DURATION
+   This agreement shall commence on [START_DATE] and terminate on [END_DATE].
+
+4. TERMINATION
+   Either party may terminate this agreement with thirty (30) days written notice.
+
+5. GOVERNING LAW
+   This agreement shall be governed by the laws of the State of California.
+
+6. SIGNATURES
+   [SIGNATURE_BLOCK]
+
+This is a sample contract for E2E testing purposes.

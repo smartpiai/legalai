@@ -172,77 +172,19 @@ const backupSchema = z.object({
 
 // Default settings
 const defaultSettings: SystemSettings = {
-  general: {
-    companyName: 'Legal AI Platform',
-    logo: null,
-    timeZone: 'UTC',
-    dateFormat: 'YYYY-MM-DD',
-    language: 'en',
-    currency: 'USD'
-  },
-  email: {
-    smtpServer: 'smtp.gmail.com',
-    smtpPort: '587',
-    username: '',
-    password: '',
-    fromAddress: 'noreply@legalai.com',
-    encryption: 'TLS'
-  },
-  storage: {
-    provider: 'S3',
-    bucketName: 'legal-ai-docs',
-    accessKey: '',
-    secretKey: '',
-    region: 'us-west-2',
-    storageLimit: '1000GB'
-  },
-  security: {
-    passwordMinLength: 8,
-    requireUppercase: true,
-    requireNumbers: true,
-    requireSpecialChars: true,
-    sessionTimeout: 30,
-    require2FA: false,
-    ipWhitelist: '',
-    maxFailedAttempts: 5
-  },
-  aiml: {
-    openaiApiKey: '',
-    model: 'gpt-4',
-    temperature: 0.7,
-    maxTokens: 2000,
-    embeddingModel: 'text-embedding-ada-002'
-  },
-  integrations: {
-    webhookUrls: [],
-    apiRateLimit: 1000,
-    slackToken: '',
-    teamsWebhook: ''
-  },
-  backup: {
-    schedule: 'daily',
-    retentionDays: 30,
-    location: 's3://backups/legal-ai',
-    autoBackup: true
-  }
+  general: { companyName: 'Legal AI Platform', logo: null, timeZone: 'UTC', dateFormat: 'YYYY-MM-DD', language: 'en', currency: 'USD' },
+  email: { smtpServer: 'smtp.gmail.com', smtpPort: '587', username: '', password: '', fromAddress: 'noreply@legalai.com', encryption: 'TLS' },
+  storage: { provider: 'S3', bucketName: 'legal-ai-docs', accessKey: '', secretKey: '', region: 'us-west-2', storageLimit: '1000GB' },
+  security: { passwordMinLength: 8, requireUppercase: true, requireNumbers: true, requireSpecialChars: true, sessionTimeout: 30, require2FA: false, ipWhitelist: '', maxFailedAttempts: 5 },
+  aiml: { openaiApiKey: '', model: 'gpt-4', temperature: 0.7, maxTokens: 2000, embeddingModel: 'text-embedding-ada-002' },
+  integrations: { webhookUrls: [], apiRateLimit: 1000, slackToken: '', teamsWebhook: '' },
+  backup: { schedule: 'daily', retentionDays: 30, location: 's3://backups/legal-ai', autoBackup: true }
 }
 
 // Mock audit entries
 const mockAuditEntries: AuditEntry[] = [
-  {
-    id: '1',
-    user: 'admin@legalai.com',
-    action: 'updated General settings',
-    category: 'general',
-    timestamp: new Date().toISOString()
-  },
-  {
-    id: '2',
-    user: 'admin@legalai.com', 
-    action: 'updated Email settings',
-    category: 'email',
-    timestamp: new Date(Date.now() - 3600000).toISOString()
-  }
+  { id: '1', user: 'admin@legalai.com', action: 'updated General settings', category: 'general', timestamp: new Date().toISOString() },
+  { id: '2', user: 'admin@legalai.com', action: 'updated Email settings', category: 'email', timestamp: new Date(Date.now() - 3600000).toISOString() }
 ]
 
 interface TabConfig {
@@ -259,7 +201,7 @@ const tabs: TabConfig[] = [
   { key: 'security', label: 'Security', icon: Shield, schema: securitySchema },
   { key: 'aiml', label: 'AI/ML', icon: Brain, schema: aimlSchema },
   { key: 'integrations', label: 'Integrations', icon: Webhook, schema: integrationsSchema },
-  { key: 'backup', label: 'Backup', icon: Archive, schema: backupSchema },
+  { key: 'backup', label: 'Backup', icon: Archive, schema: backupSchema }
 ]
 
 export default function SystemSettingsPage() {
@@ -411,373 +353,156 @@ export default function SystemSettingsPage() {
   }
 
   const handleKeyDown = (e: React.KeyboardEvent, nextTab: TabKey) => {
+    const currentIndex = tabs.findIndex(tab => tab.key === activeTab)
     if (e.key === 'ArrowRight') {
-      const currentIndex = tabs.findIndex(tab => tab.key === activeTab)
       const nextIndex = (currentIndex + 1) % tabs.length
-      const nextTabElement = document.getElementById(`tab-${tabs[nextIndex].key}`)
-      nextTabElement?.focus()
+      document.getElementById(`tab-${tabs[nextIndex].key}`)?.focus()
     } else if (e.key === 'ArrowLeft') {
-      const currentIndex = tabs.findIndex(tab => tab.key === activeTab)
       const prevIndex = currentIndex === 0 ? tabs.length - 1 : currentIndex - 1
-      const prevTabElement = document.getElementById(`tab-${tabs[prevIndex].key}`)
-      prevTabElement?.focus()
+      document.getElementById(`tab-${tabs[prevIndex].key}`)?.focus()
     }
   }
 
-  const renderGeneralSettings = () => {
-    return (
-      <div className="space-y-6">
-        <Controller
-          name="companyName"
-          control={control}
-          render={({ field }) => (
-            <Input
-              {...field}
-              label="Company Name"
-              error={errors.companyName?.message}
-              required
-              aria-describedby="company-name-description"
-            />
-          )}
-        />
-        
+  const SelectField = ({ name, label, options, required = false }: { 
+    name: string, label: string, options: Array<{value: string, label: string}>, required?: boolean 
+  }) => (
+    <Controller
+      name={name}
+      control={control}
+      render={({ field }) => (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Logo Upload
+          <label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-2">
+            {label} {required && '*'}
           </label>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileUpload}
-            className="hidden"
-            aria-label="Upload Logo"
+          <select
+            {...field}
+            id={name}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          >
+            {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+          </select>
+          {errors[name] && <p className="mt-1 text-sm text-red-600">{errors[name]?.message}</p>}
+        </div>
+      )}
+    />
+  )
+
+  const renderGeneralSettings = () => (
+    <div className="space-y-6">
+      <Controller
+        name="companyName"
+        control={control}
+        render={({ field }) => (
+          <Input
+            {...field}
+            label="Company Name"
+            error={errors.companyName?.message}
+            required
+            aria-describedby="company-name-description"
           />
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => fileInputRef.current?.click()}
-            icon={<Upload className="h-4 w-4" />}
-          >
-            Choose File
-          </Button>
-          {watch('logo') && (
-            <p className="mt-2 text-sm text-gray-600">
-              {(watch('logo') as File)?.name}
-            </p>
-          )}
-        </div>
-
-        <Controller
-          name="timeZone"
-          control={control}
-          render={({ field }) => (
-            <div>
-              <label htmlFor="timeZone" className="block text-sm font-medium text-gray-700 mb-2">
-                Time Zone *
-              </label>
-              <select
-                {...field}
-                id="timeZone"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="UTC">UTC</option>
-                <option value="EST">EST</option>
-                <option value="PST">PST</option>
-              </select>
-              {errors.timeZone && (
-                <p className="mt-1 text-sm text-red-600">{errors.timeZone.message}</p>
-              )}
-            </div>
-          )}
-        />
-
-        <Controller
-          name="dateFormat"
-          control={control}
-          render={({ field }) => (
-            <div>
-              <label htmlFor="dateFormat" className="block text-sm font-medium text-gray-700 mb-2">
-                Date Format *
-              </label>
-              <select
-                {...field}
-                id="dateFormat"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-              </select>
-              {errors.dateFormat && (
-                <p className="mt-1 text-sm text-red-600">{errors.dateFormat.message}</p>
-              )}
-            </div>
-          )}
-        />
-
-        <Controller
-          name="language"
-          control={control}
-          render={({ field }) => (
-            <div>
-              <label htmlFor="language" className="block text-sm font-medium text-gray-700 mb-2">
-                Language *
-              </label>
-              <select
-                {...field}
-                id="language"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="en">English</option>
-                <option value="es">Spanish</option>
-                <option value="fr">French</option>
-              </select>
-              {errors.language && (
-                <p className="mt-1 text-sm text-red-600">{errors.language.message}</p>
-              )}
-            </div>
-          )}
-        />
-
-        <Controller
-          name="currency"
-          control={control}
-          render={({ field }) => (
-            <div>
-              <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-2">
-                Currency *
-              </label>
-              <select
-                {...field}
-                id="currency"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="GBP">GBP</option>
-              </select>
-              {errors.currency && (
-                <p className="mt-1 text-sm text-red-600">{errors.currency.message}</p>
-              )}
-            </div>
-          )}
-        />
+        )}
+      />
+      
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Logo Upload</label>
+        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload} className="hidden" aria-label="Upload Logo" />
+        <Button type="button" variant="secondary" onClick={() => fileInputRef.current?.click()} icon={<Upload className="h-4 w-4" />}>
+          Choose File
+        </Button>
+        {watch('logo') && <p className="mt-2 text-sm text-gray-600">{(watch('logo') as File)?.name}</p>}
       </div>
-    )
-  }
 
-  const renderEmailSettings = () => {
-    return (
-      <div className="space-y-6">
-        <Controller
-          name="smtpServer"
-          control={control}
-          render={({ field }) => (
-            <Input
-              {...field}
-              label="SMTP Server"
-              error={errors.smtpServer?.message}
-              required
-            />
-          )}
-        />
+      <SelectField name="timeZone" label="Time Zone" required options={[{value:"UTC",label:"UTC"},{value:"EST",label:"EST"},{value:"PST",label:"PST"}]} />
+      <SelectField name="dateFormat" label="Date Format" required options={[{value:"YYYY-MM-DD",label:"YYYY-MM-DD"},{value:"MM/DD/YYYY",label:"MM/DD/YYYY"},{value:"DD/MM/YYYY",label:"DD/MM/YYYY"}]} />
+      <SelectField name="language" label="Language" required options={[{value:"en",label:"English"},{value:"es",label:"Spanish"},{value:"fr",label:"French"}]} />
+      <SelectField name="currency" label="Currency" required options={[{value:"USD",label:"USD"},{value:"EUR",label:"EUR"},{value:"GBP",label:"GBP"}]} />
+    </div>
+  )
 
-        <Controller
-          name="smtpPort"
-          control={control}
-          render={({ field }) => (
-            <Input
-              {...field}
-              label="SMTP Port"
-              type="number"
-              error={errors.smtpPort?.message}
-              required
-            />
-          )}
-        />
-
-        <Controller
-          name="username"
-          control={control}
-          render={({ field }) => (
-            <Input
-              {...field}
-              label="Username"
-              error={errors.username?.message}
-              required
-            />
-          )}
-        />
-
-        <Controller
-          name="password"
-          control={control}
-          render={({ field }) => (
-            <div className="relative">
-              <Input
-                {...field}
-                label="Password"
-                type={showPasswords.password ? 'text' : 'password'}
-                error={errors.password?.message}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => togglePasswordVisibility('password')}
-                className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
-              >
-                {showPasswords.password ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          )}
-        />
-
-        <Controller
-          name="fromAddress"
-          control={control}
-          render={({ field }) => (
-            <Input
-              {...field}
-              label="From Address"
-              type="email"
-              error={errors.fromAddress?.message}
-              required
-            />
-          )}
-        />
-
-        <div className="flex justify-end">
-          <Button
+  const PasswordField = ({ name, label, required = false }: { name: string, label: string, required?: boolean }) => (
+    <Controller
+      name={name}
+      control={control}
+      render={({ field }) => (
+        <div className="relative">
+          <Input
+            {...field}
+            label={label}
+            type={showPasswords[name] ? 'text' : 'password'}
+            error={errors[name]?.message}
+            required={required}
+          />
+          <button
             type="button"
-            variant="secondary"
-            onClick={() => testConnection('email')}
-            loading={isLoading}
-            icon={<TestTube className="h-4 w-4" />}
+            onClick={() => togglePasswordVisibility(name)}
+            className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
           >
-            Test Email
-          </Button>
+            {showPasswords[name] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
         </div>
+      )}
+    />
+  )
+
+  const InputField = ({ name, label, type = 'text', required = false }: { name: string, label: string, type?: string, required?: boolean }) => (
+    <Controller
+      name={name}
+      control={control}
+      render={({ field }) => (
+        <Input
+          {...field}
+          label={label}
+          type={type}
+          error={errors[name]?.message}
+          required={required}
+        />
+      )}
+    />
+  )
+
+  const renderEmailSettings = () => (
+    <div className="space-y-6">
+      <InputField name="smtpServer" label="SMTP Server" required />
+      <InputField name="smtpPort" label="SMTP Port" type="number" required />
+      <InputField name="username" label="Username" required />
+      <PasswordField name="password" label="Password" required />
+      <InputField name="fromAddress" label="From Address" type="email" required />
+      
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => testConnection('email')}
+          loading={isLoading}
+          icon={<TestTube className="h-4 w-4" />}
+        >
+          Test Email
+        </Button>
       </div>
-    )
-  }
+    </div>
+  )
 
   const renderStorageSettings = () => {
     const provider = watch('provider')
-    
     return (
       <div className="space-y-6">
-        <Controller
-          name="provider"
-          control={control}
-          render={({ field }) => (
-            <div>
-              <label htmlFor="provider" className="block text-sm font-medium text-gray-700 mb-2">
-                Storage Provider *
-              </label>
-              <select
-                {...field}
-                id="provider"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="S3">Amazon S3</option>
-                <option value="MinIO">MinIO</option>
-                <option value="Local">Local Storage</option>
-              </select>
-              {errors.provider && (
-                <p className="mt-1 text-sm text-red-600">{errors.provider.message}</p>
-              )}
-            </div>
-          )}
+        <SelectField 
+          name="provider" 
+          label="Storage Provider" 
+          required
+          options={[{value:"S3",label:"Amazon S3"},{value:"MinIO",label:"MinIO"},{value:"Local",label:"Local Storage"}]}
         />
-
         {provider === 'Local' ? (
-          <Controller
-            name="localPath"
-            control={control}
-            render={({ field }) => (
-              <Input
-                {...field}
-                label="Local Path"
-                error={errors.localPath?.message}
-              />
-            )}
-          />
+          <InputField name="localPath" label="Local Path" />
         ) : (
           <>
-            <Controller
-              name="bucketName"
-              control={control}
-              render={({ field }) => (
-                <Input
-                  {...field}
-                  label="Bucket Name"
-                  error={errors.bucketName?.message}
-                />
-              )}
-            />
-
-            <Controller
-              name="accessKey"
-              control={control}
-              render={({ field }) => (
-                <Input
-                  {...field}
-                  label="Access Key"
-                  error={errors.accessKey?.message}
-                />
-              )}
-            />
-
-            <Controller
-              name="secretKey"
-              control={control}
-              render={({ field }) => (
-                <div className="relative">
-                  <Input
-                    {...field}
-                    label="Secret Key"
-                    type={showPasswords.secretKey ? 'text' : 'password'}
-                    error={errors.secretKey?.message}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => togglePasswordVisibility('secretKey')}
-                    className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPasswords.secretKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              )}
-            />
-
-            <Controller
-              name="region"
-              control={control}
-              render={({ field }) => (
-                <Input
-                  {...field}
-                  label="Region"
-                  error={errors.region?.message}
-                />
-              )}
-            />
+            <InputField name="bucketName" label="Bucket Name" />
+            <InputField name="accessKey" label="Access Key" />
+            <PasswordField name="secretKey" label="Secret Key" />
+            <InputField name="region" label="Region" />
           </>
         )}
-
-        <Controller
-          name="storageLimit"
-          control={control}
-          render={({ field }) => (
-            <Input
-              {...field}
-              label="Storage Limit"
-              error={errors.storageLimit?.message}
-              required
-            />
-          )}
-        />
-
+        <InputField name="storageLimit" label="Storage Limit" required />
         <div className="flex justify-end">
           <Button
             type="button"
@@ -793,447 +518,171 @@ export default function SystemSettingsPage() {
     )
   }
 
-  const renderSecuritySettings = () => {
-    return (
-      <div className="space-y-6">
-        <Controller
-          name="passwordMinLength"
-          control={control}
-          render={({ field: { onChange, value, ...field } }) => (
-            <Input
-              {...field}
-              label="Minimum Password Length"
-              type="number"
-              value={value?.toString() || ''}
-              onChange={(e) => onChange(parseInt(e.target.value) || 0)}
-              error={errors.passwordMinLength?.message}
-              required
-            />
-          )}
+  const NumberField = ({ name, label, required = false }: { name: string, label: string, required?: boolean }) => (
+    <Controller
+      name={name}
+      control={control}
+      render={({ field: { onChange, value, ...field } }) => (
+        <Input
+          {...field}
+          label={label}
+          type="number"
+          value={value?.toString() || ''}
+          onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+          error={errors[name]?.message}
+          required={required}
         />
+      )}
+    />
+  )
 
-        <Controller
-          name="requireUppercase"
-          control={control}
-          render={({ field }) => (
-            <div className="flex items-center">
-              <input
-                {...field}
-                id="requireUppercase"
-                type="checkbox"
-                checked={field.value}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="requireUppercase" className="ml-2 block text-sm text-gray-900">
-                Require Uppercase Letters
-              </label>
-            </div>
-          )}
-        />
-
-        <Controller
-          name="requireNumbers"
-          control={control}
-          render={({ field }) => (
-            <div className="flex items-center">
-              <input
-                {...field}
-                id="requireNumbers"
-                type="checkbox"
-                checked={field.value}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="requireNumbers" className="ml-2 block text-sm text-gray-900">
-                Require Numbers
-              </label>
-            </div>
-          )}
-        />
-
-        <Controller
-          name="requireSpecialChars"
-          control={control}
-          render={({ field }) => (
-            <div className="flex items-center">
-              <input
-                {...field}
-                id="requireSpecialChars"
-                type="checkbox"
-                checked={field.value}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="requireSpecialChars" className="ml-2 block text-sm text-gray-900">
-                Require Special Characters
-              </label>
-            </div>
-          )}
-        />
-
-        <Controller
-          name="sessionTimeout"
-          control={control}
-          render={({ field: { onChange, value, ...field } }) => (
-            <Input
-              {...field}
-              label="Session Timeout (minutes)"
-              type="number"
-              value={value?.toString() || ''}
-              onChange={(e) => onChange(parseInt(e.target.value) || 0)}
-              error={errors.sessionTimeout?.message}
-              required
-            />
-          )}
-        />
-
-        <Controller
-          name="require2FA"
-          control={control}
-          render={({ field }) => (
-            <div className="flex items-center">
-              <input
-                {...field}
-                id="require2FA"
-                type="checkbox"
-                checked={field.value}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="require2FA" className="ml-2 block text-sm text-gray-900">
-                Require 2FA
-              </label>
-            </div>
-          )}
-        />
-
-        <Controller
-          name="ipWhitelist"
-          control={control}
-          render={({ field }) => (
-            <Input
-              {...field}
-              label="IP Whitelist"
-              helperText="Comma-separated IP addresses"
-              error={errors.ipWhitelist?.message}
-            />
-          )}
-        />
-
-        <Controller
-          name="maxFailedAttempts"
-          control={control}
-          render={({ field: { onChange, value, ...field } }) => (
-            <Input
-              {...field}
-              label="Max Failed Login Attempts"
-              type="number"
-              value={value?.toString() || ''}
-              onChange={(e) => onChange(parseInt(e.target.value) || 0)}
-              error={errors.maxFailedAttempts?.message}
-              required
-            />
-          )}
-        />
-      </div>
-    )
-  }
-
-  const renderAIMLSettings = () => {
-    return (
-      <div className="space-y-6">
-        <Controller
-          name="openaiApiKey"
-          control={control}
-          render={({ field }) => (
-            <div className="relative">
-              <Input
-                {...field}
-                label="OpenAI API Key"
-                type={showPasswords.apiKey ? 'text' : 'password'}
-                error={errors.openaiApiKey?.message}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => togglePasswordVisibility('apiKey')}
-                className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
-              >
-                {showPasswords.apiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          )}
-        />
-
-        <Controller
-          name="model"
-          control={control}
-          render={({ field }) => (
-            <div>
-              <label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-2">
-                AI Model *
-              </label>
-              <select
-                {...field}
-                id="model"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="gpt-4">GPT-4</option>
-                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-              </select>
-              {errors.model && (
-                <p className="mt-1 text-sm text-red-600">{errors.model.message}</p>
-              )}
-            </div>
-          )}
-        />
-
-        <Controller
-          name="temperature"
-          control={control}
-          render={({ field: { onChange, value, ...field } }) => (
-            <Input
-              {...field}
-              label="Temperature"
-              type="number"
-              step="0.1"
-              min="0"
-              max="2"
-              value={value?.toString() || ''}
-              onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-              error={errors.temperature?.message}
-              helperText="Controls randomness (0.0 to 2.0)"
-              required
-            />
-          )}
-        />
-
-        <Controller
-          name="maxTokens"
-          control={control}
-          render={({ field: { onChange, value, ...field } }) => (
-            <Input
-              {...field}
-              label="Max Tokens"
-              type="number"
-              value={value?.toString() || ''}
-              onChange={(e) => onChange(parseInt(e.target.value) || 0)}
-              error={errors.maxTokens?.message}
-              required
-            />
-          )}
-        />
-
-        <Controller
-          name="embeddingModel"
-          control={control}
-          render={({ field }) => (
-            <div>
-              <label htmlFor="embeddingModel" className="block text-sm font-medium text-gray-700 mb-2">
-                Embedding Model *
-              </label>
-              <select
-                {...field}
-                id="embeddingModel"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="text-embedding-ada-002">text-embedding-ada-002</option>
-                <option value="text-embedding-3-small">text-embedding-3-small</option>
-                <option value="text-embedding-3-large">text-embedding-3-large</option>
-              </select>
-              {errors.embeddingModel && (
-                <p className="mt-1 text-sm text-red-600">{errors.embeddingModel.message}</p>
-              )}
-            </div>
-          )}
-        />
-
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => testConnection('ai')}
-            loading={isLoading}
-            icon={<TestTube className="h-4 w-4" />}
-          >
-            Test API
-          </Button>
+  const CheckboxField = ({ name, label }: { name: string, label: string }) => (
+    <Controller
+      name={name}
+      control={control}
+      render={({ field }) => (
+        <div className="flex items-center">
+          <input
+            {...field}
+            id={name}
+            type="checkbox"
+            checked={field.value}
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          />
+          <label htmlFor={name} className="ml-2 block text-sm text-gray-900">
+            {label}
+          </label>
         </div>
+      )}
+    />
+  )
+
+  const renderSecuritySettings = () => (
+    <div className="space-y-6">
+      <NumberField name="passwordMinLength" label="Minimum Password Length" required />
+      <CheckboxField name="requireUppercase" label="Require Uppercase Letters" />
+      <CheckboxField name="requireNumbers" label="Require Numbers" />
+      <CheckboxField name="requireSpecialChars" label="Require Special Characters" />
+      <NumberField name="sessionTimeout" label="Session Timeout (minutes)" required />
+      <CheckboxField name="require2FA" label="Require 2FA" />
+      <InputField name="ipWhitelist" label="IP Whitelist" />
+      <NumberField name="maxFailedAttempts" label="Max Failed Login Attempts" required />
+    </div>
+  )
+
+  const DecimalField = ({ name, label, step = "0.1", min = "0", max = "2", required = false }: { 
+    name: string, label: string, step?: string, min?: string, max?: string, required?: boolean 
+  }) => (
+    <Controller
+      name={name}
+      control={control}
+      render={({ field: { onChange, value, ...field } }) => (
+        <Input
+          {...field}
+          label={label}
+          type="number"
+          step={step}
+          min={min}
+          max={max}
+          value={value?.toString() || ''}
+          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          error={errors[name]?.message}
+          required={required}
+        />
+      )}
+    />
+  )
+
+  const renderAIMLSettings = () => (
+    <div className="space-y-6">
+      <PasswordField name="openaiApiKey" label="OpenAI API Key" required />
+      <SelectField 
+        name="model" 
+        label="AI Model" 
+        required
+        options={[{value:"gpt-4",label:"GPT-4"},{value:"gpt-3.5-turbo",label:"GPT-3.5 Turbo"}]}
+      />
+      <DecimalField name="temperature" label="Temperature" required />
+      <NumberField name="maxTokens" label="Max Tokens" required />
+      <SelectField 
+        name="embeddingModel" 
+        label="Embedding Model" 
+        required
+        options={[
+          {value:"text-embedding-ada-002",label:"text-embedding-ada-002"},
+          {value:"text-embedding-3-small",label:"text-embedding-3-small"},
+          {value:"text-embedding-3-large",label:"text-embedding-3-large"}
+        ]}
+      />
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => testConnection('ai')}
+          loading={isLoading}
+          icon={<TestTube className="h-4 w-4" />}
+        >
+          Test API
+        </Button>
       </div>
-    )
+    </div>
+  )
+
+  const renderIntegrationsSettings = () => (
+    <div className="space-y-6">
+      <Controller
+        name="webhookUrls"
+        control={control}
+        render={({ field: { onChange, value, ...field } }) => (
+          <Input
+            {...field}
+            label="Webhook URLs"
+            value={Array.isArray(value) ? value.join(', ') : value || ''}
+            onChange={(e) => {
+              const urls = e.target.value.split(',').map(url => url.trim()).filter(Boolean)
+              onChange(urls)
+            }}
+            error={errors.webhookUrls?.message}
+            helperText="Comma-separated URLs"
+          />
+        )}
+      />
+      <NumberField name="apiRateLimit" label="API Rate Limit (requests per hour)" required />
+      <PasswordField name="slackToken" label="Slack Token" />
+      <InputField name="teamsWebhook" label="Teams Webhook" type="url" />
+    </div>
+  )
+
+  const renderBackupSettings = () => (
+    <div className="space-y-6">
+      <SelectField 
+        name="schedule" 
+        label="Backup Schedule" 
+        required
+        options={[
+          {value:"hourly",label:"Hourly"},
+          {value:"daily",label:"Daily"},
+          {value:"weekly",label:"Weekly"},
+          {value:"monthly",label:"Monthly"}
+        ]}
+      />
+      <NumberField name="retentionDays" label="Retention Policy (days)" required />
+      <InputField name="location" label="Backup Location" required />
+      <CheckboxField name="autoBackup" label="Auto Backup" />
+    </div>
+  )
+
+  const tabRenderers = {
+    general: renderGeneralSettings,
+    email: renderEmailSettings,
+    storage: renderStorageSettings,
+    security: renderSecuritySettings,
+    aiml: renderAIMLSettings,
+    integrations: renderIntegrationsSettings,
+    backup: renderBackupSettings
   }
 
-  const renderIntegrationsSettings = () => {
-    return (
-      <div className="space-y-6">
-        <Controller
-          name="webhookUrls"
-          control={control}
-          render={({ field: { onChange, value, ...field } }) => (
-            <Input
-              {...field}
-              label="Webhook URLs"
-              value={Array.isArray(value) ? value.join(', ') : value || ''}
-              onChange={(e) => {
-                const urls = e.target.value.split(',').map(url => url.trim()).filter(Boolean)
-                onChange(urls)
-              }}
-              error={errors.webhookUrls?.message}
-              helperText="Comma-separated URLs"
-            />
-          )}
-        />
-
-        <Controller
-          name="apiRateLimit"
-          control={control}
-          render={({ field: { onChange, value, ...field } }) => (
-            <Input
-              {...field}
-              label="API Rate Limit (requests per hour)"
-              type="number"
-              value={value?.toString() || ''}
-              onChange={(e) => onChange(parseInt(e.target.value) || 0)}
-              error={errors.apiRateLimit?.message}
-              required
-            />
-          )}
-        />
-
-        <Controller
-          name="slackToken"
-          control={control}
-          render={({ field }) => (
-            <div className="relative">
-              <Input
-                {...field}
-                label="Slack Token"
-                type={showPasswords.slackToken ? 'text' : 'password'}
-                error={errors.slackToken?.message}
-              />
-              <button
-                type="button"
-                onClick={() => togglePasswordVisibility('slackToken')}
-                className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
-              >
-                {showPasswords.slackToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          )}
-        />
-
-        <Controller
-          name="teamsWebhook"
-          control={control}
-          render={({ field }) => (
-            <Input
-              {...field}
-              label="Teams Webhook"
-              type="url"
-              error={errors.teamsWebhook?.message}
-            />
-          )}
-        />
-      </div>
-    )
-  }
-
-  const renderBackupSettings = () => {
-    return (
-      <div className="space-y-6">
-        <Controller
-          name="schedule"
-          control={control}
-          render={({ field }) => (
-            <div>
-              <label htmlFor="schedule" className="block text-sm font-medium text-gray-700 mb-2">
-                Backup Schedule *
-              </label>
-              <select
-                {...field}
-                id="schedule"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="hourly">Hourly</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-              {errors.schedule && (
-                <p className="mt-1 text-sm text-red-600">{errors.schedule.message}</p>
-              )}
-            </div>
-          )}
-        />
-
-        <Controller
-          name="retentionDays"
-          control={control}
-          render={({ field: { onChange, value, ...field } }) => (
-            <Input
-              {...field}
-              label="Retention Policy (days)"
-              type="number"
-              value={value?.toString() || ''}
-              onChange={(e) => onChange(parseInt(e.target.value) || 0)}
-              error={errors.retentionDays?.message}
-              required
-            />
-          )}
-        />
-
-        <Controller
-          name="location"
-          control={control}
-          render={({ field }) => (
-            <Input
-              {...field}
-              label="Backup Location"
-              error={errors.location?.message}
-              required
-            />
-          )}
-        />
-
-        <Controller
-          name="autoBackup"
-          control={control}
-          render={({ field }) => (
-            <div className="flex items-center">
-              <input
-                {...field}
-                id="autoBackup"
-                type="checkbox"
-                checked={field.value}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="autoBackup" className="ml-2 block text-sm text-gray-900">
-                Auto Backup
-              </label>
-            </div>
-          )}
-        />
-      </div>
-    )
-  }
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'general':
-        return renderGeneralSettings()
-      case 'email':
-        return renderEmailSettings()
-      case 'storage':
-        return renderStorageSettings()
-      case 'security':
-        return renderSecuritySettings()
-      case 'aiml':
-        return renderAIMLSettings()
-      case 'integrations':
-        return renderIntegrationsSettings()
-      case 'backup':
-        return renderBackupSettings()
-      default:
-        return null
-    }
-  }
+  const renderTabContent = () => tabRenderers[activeTab]?.()
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">

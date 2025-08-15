@@ -13,7 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Button } from '../ui/Button';
 import { useAuthStore } from '../../store/auth';
-import { api } from '../../services/api';
+import api from '../../services/api';
 
 interface BulkOperationsBarProps {
   selectedIds: number[];

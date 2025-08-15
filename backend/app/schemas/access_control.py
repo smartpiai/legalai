@@ -53,7 +53,7 @@ class DocumentPermissionResponse(PermissionBase):
     user_name: Optional[str] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class FolderCreate(BaseModel):
@@ -90,7 +90,7 @@ class FolderResponse(BaseModel):
     subfolder_count: Optional[int] = 0
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class FolderPermissionCreate(PermissionBase):
@@ -117,7 +117,7 @@ class FolderPermissionResponse(PermissionBase):
     user_name: Optional[str] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ShareRequest(BaseModel):
@@ -147,7 +147,7 @@ class ShareResponse(BaseModel):
     message: Optional[str] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class DocumentShareResponse(BaseModel):
@@ -175,7 +175,7 @@ class DocumentShareResponse(BaseModel):
     sharer_email: Optional[str] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ExternalAccessCreate(BaseModel):
@@ -212,7 +212,7 @@ class ExternalAccessResponse(BaseModel):
     document_title: Optional[str] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class AccessAuditLog(BaseModel):
@@ -236,7 +236,7 @@ class AccessAuditLog(BaseModel):
     user_name: Optional[str] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class AccessCheckRequest(BaseModel):
@@ -308,7 +308,7 @@ class UserAccessReport(BaseModel):
     access_summary: List[AccessSummary]
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class DocumentAccessReport(BaseModel):
@@ -325,4 +325,4 @@ class DocumentAccessReport(BaseModel):
     recent_access_logs: List[AccessAuditLog]
     
     class Config:
-        orm_mode = True
+        from_attributes = True

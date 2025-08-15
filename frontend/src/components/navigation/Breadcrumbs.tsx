@@ -5,7 +5,7 @@
 import { ReactNode, useState, useCallback, Fragment } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
-import { cn } from '@/utils/cn'
+import { cn } from '@/lib/utils'
 
 export interface BreadcrumbItem {
   label: string

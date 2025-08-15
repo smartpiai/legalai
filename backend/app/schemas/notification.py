@@ -110,7 +110,7 @@ class NotificationCreate(NotificationBase):
         return v
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "user_id": 1,
                 "type": "contract_approval",
@@ -154,7 +154,7 @@ class NotificationResponse(NotificationBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class BulkNotificationCreate(BaseModel):
@@ -169,7 +169,7 @@ class BulkNotificationCreate(BaseModel):
     scheduled_for: Optional[datetime] = None
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "user_ids": [1, 2, 3],
                 "type": "system_announcement",
@@ -200,7 +200,7 @@ class NotificationTemplateCreate(NotificationTemplateBase):
     is_active: bool = Field(default=True)
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "code": "CONTRACT_APPROVED",
                 "name": "Contract Approved",
@@ -239,7 +239,7 @@ class NotificationTemplateResponse(NotificationTemplateBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class NotificationPreferenceBase(BaseModel):
@@ -264,7 +264,7 @@ class NotificationPreferenceUpdate(NotificationPreferenceBase):
     notification_types: Optional[Dict[str, Dict[str, Any]]] = None
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "email_enabled": True,
                 "in_app_enabled": True,
@@ -293,7 +293,7 @@ class NotificationPreferenceResponse(NotificationPreferenceBase):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class NotificationSubscriptionCreate(BaseModel):
@@ -304,7 +304,7 @@ class NotificationSubscriptionCreate(BaseModel):
     channels: List[NotificationChannel] = Field(default_factory=list)
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "topic": "contract_updates",
                 "entity_type": "contract",
@@ -328,7 +328,7 @@ class NotificationSubscriptionResponse(BaseModel):
     unsubscribed_at: Optional[datetime]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class NotificationListResponse(BaseModel):
@@ -340,7 +340,7 @@ class NotificationListResponse(BaseModel):
     per_page: int
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "notifications": [],
                 "total": 50,
@@ -363,7 +363,7 @@ class NotificationStatsResponse(BaseModel):
     by_priority: Dict[str, int]
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "total_sent": 1000,
                 "total_delivered": 950,
@@ -395,7 +395,7 @@ class WebSocketMessage(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "type": "notification",
                 "notification_id": 123,

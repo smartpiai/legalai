@@ -3,7 +3,7 @@
  * Core form input for the Legal AI Platform
  */
 import React, { forwardRef, InputHTMLAttributes, useId } from 'react'
-import { cn } from '@/utils/cn'
+import { cn } from '@/lib/utils'
 import { X } from 'lucide-react'
 
 export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
@@ -68,15 +68,15 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     }
 
     const inputClasses = cn(
-      'flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm ring-offset-white transition-colors',
-      'file:border-0 file:bg-transparent file:text-sm file:font-medium',
-      'placeholder:text-gray-500',
-      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-      'disabled:cursor-not-allowed disabled:opacity-50',
+      'h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs transition-colors',
+      'placeholder:text-gray-400 dark:placeholder:text-white/30',
+      'focus:outline-none focus:ring-3 focus:ring-brand-500/20',
+      'disabled:cursor-not-allowed disabled:opacity-40 disabled:bg-gray-100 dark:disabled:bg-gray-800',
+      'dark:bg-gray-900 dark:text-white/90',
       {
-        'border-gray-300 focus-visible:ring-blue-500': !error && !success,
-        'border-red-500 focus-visible:ring-red-500': error,
-        'border-green-500 focus-visible:ring-green-500': success,
+        'bg-transparent text-gray-800 border-gray-300 focus:border-brand-300 dark:border-gray-700 dark:text-white/90 dark:focus:border-brand-800': !error && !success,
+        'border-error-500 focus:border-error-300 focus:ring-error-500/20 dark:text-error-400 dark:border-error-500 dark:focus:border-error-800': error,
+        'border-success-500 focus:border-success-300 focus:ring-success-500/20 dark:text-success-400 dark:border-success-500 dark:focus:border-success-800': success,
         'pl-10': icon,
         'pl-8': prefix && !icon,
         'pr-8': suffix || clearable,
@@ -96,10 +96,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="mb-2 block text-sm font-medium text-gray-700"
+            className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400"
           >
             {label}
-            {required && <span className="ml-1 text-red-500">*</span>}
+            {required && <span className="ml-1 text-error-500">*</span>}
           </label>
         )}
         
@@ -111,7 +111,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           )}
           
           {prefix && !icon && (
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
               {prefix}
             </div>
           )}
@@ -137,7 +137,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             <button
               type="button"
               onClick={handleClear}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
               aria-label="Clear input"
             >
               <X className="h-4 w-4" />
@@ -145,20 +145,20 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           )}
           
           {suffix && !clearable && (
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">
               {suffix}
             </div>
           )}
         </div>
         
         {error && (
-          <p id={errorId} className="mt-1 text-sm text-red-600">
+          <p id={errorId} className="mt-1 text-sm text-destructive">
             {error}
           </p>
         )}
         
         {helperText && !error && (
-          <p id={helperId} className="mt-1 text-sm text-gray-500">
+          <p id={helperId} className="mt-1 text-sm text-muted-foreground">
             {helperText}
           </p>
         )}

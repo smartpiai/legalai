@@ -9,7 +9,7 @@ import {
   ArrowsPointingOutIcon,
   DocumentArrowUpIcon,
 } from '@heroicons/react/24/outline';
-import { api } from '../../services/api';
+import api from '../../services/api';
 
 interface DuplicateFile {
   id: number;

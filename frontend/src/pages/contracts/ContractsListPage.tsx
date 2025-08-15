@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
-import { api } from '../../services/api';
+import api from '../../services/api';
 import { ContractOverviewWidget } from '../../components/contracts/ContractOverviewWidget';
 import { RecentActivityFeed } from '../../components/contracts/RecentActivityFeed';
 import { QuickActionButtons } from '../../components/contracts/QuickActionButtons';

@@ -31,7 +31,7 @@ import { ContractOverviewWidget, type ContractData } from '@/components/contract
 import { RecentActivityFeed, type ActivityItem } from '@/components/contracts/RecentActivityFeed'
 import { QuickActionButtons } from '@/components/contracts/QuickActionButtons'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { cn } from '@/utils/cn'
+import { cn } from '@/lib/utils'
 
 // Lazy loaded components for performance
 const LazyContractOverviewWidget = memo(ContractOverviewWidget)
@@ -526,8 +526,8 @@ export default function HomePage() {
 
   // Desktop layout
   return (
-    <div data-testid="home-page" className="min-h-screen bg-gray-50">
-      <main role="main" aria-label="Dashboard" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div data-testid="home-page" className="space-y-6">
+      <main role="main" aria-label="Legal Dashboard">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">

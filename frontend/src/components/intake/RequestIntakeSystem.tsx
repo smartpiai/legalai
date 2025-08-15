@@ -16,7 +16,7 @@ import {
   InformationCircleIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
-import { api } from '../../services/api';
+import api from '../../services/api';
 
 // Types and schemas
 const requestSchema = z.object({

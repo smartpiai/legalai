@@ -19,7 +19,7 @@ import {
   type PasswordStrength
 } from '@/schemas/auth.schema'
 import { resetPassword } from '@/services/auth'
-import { cn } from '@/utils/cn'
+import { cn } from '@/lib/utils'
 
 interface PasswordStrengthIndicatorProps {
   password: string

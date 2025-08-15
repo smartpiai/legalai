@@ -12,7 +12,7 @@ import {
   SortAsc,
   Menu
 } from 'lucide-react'
-import { cn } from '@/utils/cn'
+import { cn } from '@/lib/utils'
 
 export interface FilterOption {
   value: string

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import { DuplicateDetection } from '../DuplicateDetection';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { api } from '../../../services/api';
+import api from '../../../services/api';
 
 // Mock API
 vi.mock('../../../services/api', () => ({

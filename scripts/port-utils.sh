@@ -291,7 +291,8 @@ update_env_port() {
     
     if grep -q "^$port_key=" "$env_file"; then
         # Update existing entry
-        sed -i.tmp "s/^$port_key=.*/$port_key=$new_port/" "$env_file"
+        # Use # as a delimiter to handle slashes in the value
+        sed -i.tmp "s#^$port_key=.*#$port_key=$new_port#" "$env_file"
         rm -f "${env_file}.tmp"
     else
         # Add new entry

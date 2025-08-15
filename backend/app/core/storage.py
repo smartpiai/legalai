@@ -22,8 +22,9 @@ class MinIOStorage:
     ):
         """Initialize MinIO connection parameters."""
         self.endpoint = endpoint or settings.MINIO_ENDPOINT
-        self.access_key = access_key or settings.MINIO_ACCESS_KEY
-        self.secret_key = secret_key or settings.MINIO_SECRET_KEY
+        # Use modern ROOT credentials, fall back to older ACCESS_KEY for compatibility
+        self.access_key = access_key or getattr(settings, 'MINIO_ROOT_USER', settings.MINIO_ACCESS_KEY)
+        self.secret_key = secret_key or getattr(settings, 'MINIO_ROOT_PASSWORD', settings.MINIO_SECRET_KEY)
         self.secure = secure if secure is not None else settings.MINIO_SECURE
         self.client: Optional[Minio] = None
     

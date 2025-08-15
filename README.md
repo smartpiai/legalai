@@ -40,38 +40,83 @@ A next-generation legal AI platform that combines comprehensive Contract Lifecyc
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Docker & Docker Compose (v2.20+)
-- Python 3.11+
-- Node.js 18+ LTS
-- 16GB RAM minimum (recommended)
-- 50GB available disk space
+- **Docker & Docker Compose** (v2.20+) - For backend services
+- **Node.js 18+ LTS** - For frontend development
+- **16GB RAM minimum** (recommended)
+- **50GB available disk space**
 
-### One-Command Setup
+### 🎯 New: Two-Script Launch System
+
+The easiest way to get started with the Legal AI Platform:
 
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/legal-ai-platform.git
 cd legal-ai-platform
 
-# Run the quick start script
+# Terminal 1 - Start Backend Services
+./launch-backend.sh
+
+# Terminal 2 - Start Frontend (after backend is ready)
+./launch-frontend.sh
+```
+
+**That's it!** The platform will be automatically available with intelligent port management and health checks.
+
+#### What the Scripts Do
+
+**`./launch-backend.sh`** - Complete Backend Setup:
+- 🔍 **Automatic Port Detection**: Finds available ports for all services
+- 🐳 **Docker Service Management**: Starts PostgreSQL, Redis, Neo4j, Qdrant, MinIO, ClamAV
+- 🏥 **Health Checks**: Waits for all services to be healthy before proceeding
+- 📊 **Database Migrations**: Automatically runs Alembic migrations
+- 🌐 **IP Detection**: Detects machine IP for external access
+- ⚙️ **Environment Setup**: Updates .env with discovered configuration
+
+**`./launch-frontend.sh`** - Frontend Development Server:
+- ✅ **Backend Verification**: Ensures backend is ready before starting
+- 🔧 **Port Management**: Automatic port detection and configuration
+- ⚡ **Vite Development Server**: Fast development with hot reload
+- 🔗 **API Connectivity**: Automatic backend connection configuration
+- 🐳 **Docker Option**: Can use Docker Compose instead of local Node.js
+
+#### Advanced Launch Options
+
+```bash
+# Backend options
+./launch-backend.sh --auto-ports     # Auto-resolve port conflicts
+./launch-backend.sh --clean          # Clean restart (remove containers)
+./launch-backend.sh --ip 192.168.1.100  # Use specific IP address
+./launch-backend.sh --verbose        # Detailed output
+
+# Frontend options  
+./launch-frontend.sh --auto-port     # Auto-find available port
+./launch-frontend.sh --port 3001     # Use specific port
+./launch-frontend.sh --docker        # Use Docker instead of local Node.js
+./launch-frontend.sh --verbose       # Detailed output
+```
+
+#### Access Your Application
+
+After successful launch:
+- **🌐 Main Application**: `http://[machine-ip]:[frontend-port]`
+- **📚 API Documentation**: `http://[machine-ip]:[backend-port]/docs`
+- **🔍 Health Check**: `http://[machine-ip]:[backend-port]/api/v1/health/ready`
+
+The scripts automatically display the exact URLs with your machine's configuration.
+
+### Traditional Setup
+
+If you prefer the traditional approach or need custom configuration:
+
+#### One-Command Setup
+
+```bash
+# Legacy quick start script (still supported)
 ./quick-start.sh
 ```
 
-This will:
-1. Set up environment variables
-2. Start all required services (PostgreSQL, Neo4j, Redis, Qdrant, MinIO)
-3. Run database migrations
-4. Start the backend API server
-5. Start the frontend development server
-
-Access the application:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- API Documentation: http://localhost:8000/docs
-
-### Manual Setup
-
-If you prefer manual setup or need custom configuration:
+#### Manual Setup
 
 ```bash
 # 1. Copy and configure environment variables
@@ -94,6 +139,48 @@ cd frontend
 npm install
 npm run dev
 ```
+
+### 🔧 Port Management
+
+The new launch scripts automatically handle port conflicts:
+
+| Service | Default Port | Auto-Assigned |
+|---------|-------------|---------------|
+| PostgreSQL | 5432 | 5433+ |
+| Redis | 6379 | 6380+ |
+| Neo4j HTTP | 7474 | 7475+ |
+| Neo4j Bolt | 7687 | 7688+ |
+| Backend API | 8000 | 8001+ |
+| Frontend | 3000 | 3001+ |
+
+### 🚨 Troubleshooting
+
+#### Common Issues
+
+```bash
+# Docker not running
+sudo systemctl start docker
+./launch-backend.sh
+
+# Port conflicts
+./launch-backend.sh --auto-ports
+./launch-frontend.sh --auto-port
+
+# Backend not ready
+docker compose logs backend
+./launch-frontend.sh --skip-backend-check
+
+# Clean reset everything
+docker compose down -v
+./launch-backend.sh --clean --auto-ports
+```
+
+#### Log Files
+- **Backend Services**: `docker compose logs [service]`
+- **Frontend Local**: `.frontend.log`
+- **All Services**: `docker compose logs -f`
+
+For complete documentation, see [LAUNCH.md](LAUNCH.md).
 
 ## 🏗️ Architecture
 

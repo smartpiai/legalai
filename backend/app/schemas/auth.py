@@ -14,7 +14,7 @@ class TokenPair(BaseModel):
     expires_in: int  # seconds
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
                 "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -29,7 +29,7 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str = Field(..., description="The refresh token to use")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
             }
@@ -43,7 +43,7 @@ class LoginRequest(BaseModel):
     device_info: Optional[str] = Field(None, description="Device/browser information")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "email": "user@example.com",
                 "password": "securepassword123",
@@ -57,7 +57,7 @@ class LogoutRequest(BaseModel):
     all_devices: bool = Field(False, description="Logout from all devices")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "all_devices": False
             }
@@ -73,8 +73,8 @@ class SessionInfo(BaseModel):
     created: datetime
     
     class Config:
-        orm_mode = True
-        schema_extra = {
+        from_attributes = True
+        json_schema_extra = {
             "example": {
                 "id": "123e4567-e89b-12d3-a456-426614174000",
                 "device_info": "Chrome on Windows",
@@ -91,7 +91,7 @@ class ActiveSessionsResponse(BaseModel):
     total: int
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "sessions": [
                     {

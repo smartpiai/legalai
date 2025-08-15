@@ -4,19 +4,19 @@
  */
 import React, { forwardRef, HTMLAttributes, ElementType } from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { cn } from '@/utils/cn'
+import { cn } from '@/lib/utils'
 
 const cardVariants = cva(
-  'rounded-lg transition-all',
+  'rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] transition-colors',
   {
     variants: {
       variant: {
-        default: 'bg-white border border-gray-200',
-        bordered: 'bg-white border-2 border-gray-300',
-        elevated: 'bg-white shadow-lg',
+        default: 'shadow-theme-sm',
+        bordered: 'border-2',
+        elevated: 'shadow-theme-lg',
       },
       clickable: {
-        true: 'hover:shadow-md cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
+        true: 'hover:shadow-theme-md cursor-pointer focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand-500/20',
       },
     },
     defaultVariants: {
@@ -63,7 +63,7 @@ export const CardHeader = forwardRef<HTMLDivElement, CardHeaderProps>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('flex flex-col space-y-1.5 p-6', className)}
+      className={cn('flex flex-col space-y-1.5 p-5 md:p-6', className)}
       {...props}
     />
   )
@@ -111,7 +111,7 @@ export const CardDescription = forwardRef<HTMLParagraphElement, CardDescriptionP
   ({ className, ...props }, ref) => (
     <p
       ref={ref}
-      className={cn('text-sm text-gray-500', className)}
+      className={cn('text-sm text-muted-foreground', className)}
       {...props}
     />
   )
@@ -127,7 +127,7 @@ export const CardContent = forwardRef<HTMLDivElement, CardContentProps>(
   ({ className, noPadding, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn(!noPadding && 'p-6 pt-0', className)}
+      className={cn(!noPadding && 'p-5 pt-0 md:p-6 md:pt-0', className)}
       {...props}
     />
   )

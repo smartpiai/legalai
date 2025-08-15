@@ -60,7 +60,7 @@ class VariableDefinition(BaseModel):
         return v
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "name": "company_name",
                 "type": "text",
@@ -91,7 +91,7 @@ class TemplateCreate(TemplateBase):
     parent_template_id: Optional[int] = None
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "name": "Service Agreement Template",
                 "description": "Standard service agreement for professional services",
@@ -132,7 +132,7 @@ class TemplateUpdate(BaseModel):
     change_summary: Optional[str] = None
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "content": "Updated agreement content...",
                 "change_summary": "Added new confidentiality clause"
@@ -163,7 +163,7 @@ class TemplateResponse(TemplateBase):
     variables: List[VariableDefinition]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class TemplateListResponse(BaseModel):
@@ -174,7 +174,7 @@ class TemplateListResponse(BaseModel):
     per_page: int
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "templates": [],
                 "total": 25,
@@ -196,7 +196,7 @@ class TemplateVersionResponse(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class TemplateSearchRequest(BaseModel):
@@ -224,7 +224,7 @@ class RenderContext(BaseModel):
     locale: str = Field(default="en-US")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "variables": {
                     "company_name": "TechCorp Inc.",
@@ -250,7 +250,7 @@ class RenderRequest(BaseModel):
     output_format: str = Field(default="html", regex="^(html|pdf|docx|text)$")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "template_id": 1,
                 "context": {
@@ -273,7 +273,7 @@ class RenderResponse(BaseModel):
     missing_variables: List[str] = Field(default_factory=list)
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "rendered_content": "<html>...</html>",
                 "output_format": "html",
@@ -297,7 +297,7 @@ class ClauseLibraryCreate(BaseModel):
     notes: Optional[str] = None
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "name": "Standard Confidentiality Clause",
                 "content": "The Receiving Party shall maintain confidentiality...",
@@ -325,7 +325,7 @@ class ClauseLibraryResponse(ClauseLibraryCreate):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class TemplateStatistics(BaseModel):
@@ -340,7 +340,7 @@ class TemplateStatistics(BaseModel):
     average_render_time_ms: Optional[float]
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "template_id": 1,
                 "usage_count": 150,
@@ -364,7 +364,7 @@ class TemplateApprovalRequest(BaseModel):
     comments: Optional[str] = None
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "action": "approve",
                 "comments": "Approved after legal review"
@@ -380,7 +380,7 @@ class TemplateCloneRequest(BaseModel):
     include_versions: bool = Field(default=False)
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "new_name": "Service Agreement - Modified",
                 "new_category": "service_modified",

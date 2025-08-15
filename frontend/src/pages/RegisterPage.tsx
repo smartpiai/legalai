@@ -19,7 +19,7 @@ import {
   getPasswordStrengthWidth,
   type PasswordStrength
 } from '@/schemas/auth.schema'
-import { cn } from '@/utils/cn'
+import { cn } from '@/lib/utils'
 
 interface PasswordStrengthIndicatorProps {
   password: string
@@ -128,32 +128,33 @@ export default function RegisterPage() {
   const isFormDisabled = isLoading || !watchedTerms || !watchedPrivacy
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h1 className="mt-6 text-center text-2xl md:text-3xl font-bold text-gray-900">
-            Create Account
-          </h1>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Join the Legal AI Platform to get started
-          </p>
-        </div>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="space-y-2 text-center">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          Create Account
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Join the Legal AI Platform to get started
+        </p>
+      </div>
 
-        <form 
-          className="mt-8 space-y-4" 
-          onSubmit={handleSubmit(onSubmit)}
-          noValidate
-          role="form"
-          aria-label="Registration form"
-        >
+      {/* Registration Form */}
+      <form 
+        className="space-y-6" 
+        onSubmit={handleSubmit(onSubmit)}
+        noValidate
+        role="form"
+        aria-label="Registration form"
+      >
           {/* Error display */}
           {error && (
             <div 
-              className="rounded-md bg-red-50 p-4 border border-red-200" 
+              className="rounded-md bg-destructive/10 p-4 border border-destructive/20" 
               role="alert"
               aria-live="polite"
             >
-              <div className="text-sm text-red-700">{error}</div>
+              <div className="text-sm text-destructive">{error}</div>
             </div>
           )}
 
@@ -304,7 +305,7 @@ export default function RegisterPage() {
                   id="accept-terms"
                   type="checkbox"
                   disabled={isLoading}
-                  className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded disabled:opacity-50"
+                  className="focus:ring-ring h-4 w-4 text-primary border-input rounded disabled:opacity-50"
                   aria-describedby={errors.acceptTerms ? 'terms-error' : undefined}
                 />
               </div>
@@ -313,7 +314,7 @@ export default function RegisterPage() {
                   I agree to the{' '}
                   <Link 
                     to="/terms" 
-                    className="text-blue-600 hover:text-blue-500 underline"
+                    className="text-primary hover:text-primary/80 underline underline-offset-4"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -336,7 +337,7 @@ export default function RegisterPage() {
                   id="accept-privacy"
                   type="checkbox"
                   disabled={isLoading}
-                  className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded disabled:opacity-50"
+                  className="focus:ring-ring h-4 w-4 text-primary border-input rounded disabled:opacity-50"
                   aria-describedby={errors.acceptPrivacy ? 'privacy-error' : undefined}
                 />
               </div>
@@ -345,7 +346,7 @@ export default function RegisterPage() {
                   I agree to the{' '}
                   <Link 
                     to="/privacy" 
-                    className="text-blue-600 hover:text-blue-500 underline"
+                    className="text-primary hover:text-primary/80 underline underline-offset-4"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -365,7 +366,7 @@ export default function RegisterPage() {
           {/* Submit Button */}
           <Button
             type="submit"
-            variant="primary"
+            variant="default"
             size="lg"
             fullWidth
             loading={isLoading}
@@ -377,18 +378,17 @@ export default function RegisterPage() {
 
           {/* Login Link */}
           <div className="text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               Already have an account?{' '}
               <Link 
                 to="/login" 
-                className="font-medium text-blue-600 hover:text-blue-500 underline"
+                className="font-medium text-primary hover:text-primary/80 underline underline-offset-4"
               >
                 Sign in
               </Link>
             </p>
-          </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   )
 }

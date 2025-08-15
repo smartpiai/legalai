@@ -27,7 +27,7 @@ vi.mock('../../../services/api', () => ({
   },
 }));
 
-import { api } from '../../../services/api';
+import api from '../../../services/api';
 
 describe('BulkOperationsBar', () => {
   let queryClient: QueryClient;

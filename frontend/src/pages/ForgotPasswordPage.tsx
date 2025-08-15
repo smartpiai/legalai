@@ -24,7 +24,7 @@ import { Input } from '@/components/ui'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui'
 import { forgotPasswordSchema, type ForgotPasswordFormData } from '@/schemas/auth.schema'
 import { requestPasswordReset } from '@/services/auth'
-import { cn } from '@/utils/cn'
+import { cn } from '@/lib/utils'
 
 const COOLDOWN_DURATION = 60 // seconds
 const RATE_LIMIT_STORAGE_KEY = 'forgotPasswordCooldown'

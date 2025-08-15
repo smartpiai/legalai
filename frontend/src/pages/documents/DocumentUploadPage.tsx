@@ -11,7 +11,7 @@ import { UploadInterface } from '@/components/upload/UploadInterface'
 import { MetadataForm } from '@/components/upload/MetadataForm'
 import { DuplicateDetection } from '@/components/upload/DuplicateDetection'
 import { UploadValidationFeedback, ValidationResult, ValidationError, ValidationWarning, FileInfo, ValidationProgress } from '@/components/upload/UploadValidationFeedback'
-import { cn } from '@/utils/cn'
+import { cn } from '@/lib/utils'
 import documentService, {
   DocumentMetadata,
   UploadProgress,

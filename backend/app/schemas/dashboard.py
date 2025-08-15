@@ -17,7 +17,7 @@ class ExecutiveSummaryResponse(BaseModel):
     recent_activities: int = Field(description="Number of activities in last 7 days")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "total_contracts": 150,
                 "active_contracts": 120,
@@ -38,7 +38,7 @@ class ContractMetricsResponse(BaseModel):
     trend: List[Dict[str, Any]] = Field(description="Monthly trend data")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "by_status": {
                     "draft": 20,
@@ -73,7 +73,7 @@ class RiskAnalyticsResponse(BaseModel):
     top_risk_factors: List[Dict[str, Any]] = Field(description="Top risk factors")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "high_risk_contracts": [
                     {
@@ -104,7 +104,7 @@ class ActivityListResponse(BaseModel):
     offset: int = Field(description="Offset for pagination")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "items": [
                     {
@@ -140,7 +140,7 @@ class DashboardFilters(BaseModel):
     status: Optional[str] = Field(None, description="Status filter")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "start_date": "2024-01-01T00:00:00Z",
                 "end_date": "2024-12-31T23:59:59Z",
@@ -159,7 +159,7 @@ class QuickStatsResponse(BaseModel):
     expired: int = Field(description="Expired contracts")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "needs_review": 5,
                 "pending_approval": 3,
@@ -179,7 +179,7 @@ class PerformanceMetricsResponse(BaseModel):
     system_uptime: float = Field(description="System uptime percentage")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "period": "30d",
                 "average_processing_time": 45.2,

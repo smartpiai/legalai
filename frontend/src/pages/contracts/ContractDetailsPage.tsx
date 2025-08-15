@@ -29,7 +29,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { contractService } from '@/services/contract.service';
-import { cn } from '@/utils/cn';
+import { cn } from '@/lib/utils';
 import {
   ContractDetailsState,
   TabId,

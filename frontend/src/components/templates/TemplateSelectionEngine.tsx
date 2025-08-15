@@ -18,7 +18,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon, StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import { useAuthStore } from '../../stores/authStore';
-import { api } from '../../services/api';
+import api from '../../services/api';
 
 // Types
 interface Template {

@@ -21,14 +21,33 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
-    # CORS
-    BACKEND_CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:8000",
-        "http://0.0.0.0:3000",
-        "http://0.0.0.0:8000"
-    ]
-    ALLOWED_HOSTS: List[str] = ["*"]
+    # CORS - Read from environment or use defaults
+    @property
+    def cors_origins(self) -> List[str]:
+        env_cors = os.getenv("BACKEND_CORS_ORIGINS")
+        if env_cors:
+            return [origin.strip() for origin in env_cors.split(",") if origin.strip()]
+        return [
+            "http://localhost:3000",
+            "http://localhost:8000", 
+            "http://0.0.0.0:3000",
+            "http://0.0.0.0:8000",
+            "http://192.168.1.4:3000",
+            "http://192.168.1.4:18001"
+        ]
+    
+    # ALLOWED_HOSTS - Read from environment or use defaults
+    @property
+    def allowed_hosts(self) -> List[str]:
+        env_hosts = os.getenv("ALLOWED_HOSTS")
+        if env_hosts:
+            if env_hosts == "*":
+                return ["*"]
+            # Split comma-separated values
+            return [host.strip() for host in env_hosts.split(",") if host.strip()]
+        
+        # Default fallback
+        return ["*"]
     
     # Database
     DATABASE_URL: str = os.getenv(

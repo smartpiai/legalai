@@ -72,6 +72,11 @@ apiClient.interceptors.response.use(
     // Handle other errors
     if (error.response?.data) {
       const errorData = error.response.data as any
+      if (error.response.status === 422 && errorData.detail) {
+        // Handle FastAPI validation errors
+        const validationErrors = errorData.detail.map((err: any) => `${err.loc[1]}: ${err.msg}`).join(', ')
+        return Promise.reject(new Error(validationErrors))
+      }
       const message = errorData.detail || errorData.message || 'An error occurred'
       return Promise.reject(new Error(message))
     }

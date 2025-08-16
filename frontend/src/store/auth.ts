@@ -30,7 +30,7 @@ interface AuthState {
   // Actions
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
-  register: (data: RegisterData) => Promise<void>
+  register: (data: RegisterData) => Promise<boolean>
   refreshAccessToken: () => Promise<void>
   loadUser: () => Promise<void>
   initialize: () => Promise<void>
@@ -53,10 +53,12 @@ interface AuthData {
 }
 
 interface RegisterData {
+  username: string
   firstName: string
   lastName: string
   email: string
   password: string
+  confirmPassword?: string
   organization?: string
   department?: string
   phone?: string
@@ -130,34 +132,24 @@ export const useAuthStore = create<AuthState>()(
           try {
             // Transform data to match API expectations
             const apiData = {
+              username: data.username,
               email: data.email,
               password: data.password,
+              confirm_password: data.confirmPassword,
               full_name: `${data.firstName} ${data.lastName}`,
               company_name: data.organization || undefined,
             }
             
-            const response = await authService.register(apiData)
+            await authService.register(apiData)
             
-            const { access_token, refresh_token, user } = response
-            
-            // Store tokens in localStorage
-            localStorage.setItem('auth-token', access_token)
-            localStorage.setItem('refresh-token', refresh_token)
-            
-            set({
-              user,
-              token: access_token,
-              refreshToken: refresh_token,
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-            })
+            set({ isLoading: false })
+            return true
           } catch (error: any) {
             set({
               isLoading: false,
               error: error.message || 'Registration failed',
             })
-            throw error
+            return false
           }
         },
         

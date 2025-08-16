@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Router } from '@/router';
+import { useAuthStore } from '@/store/auth';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -12,6 +13,12 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  const { initialize } = useAuthStore();
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <Router />

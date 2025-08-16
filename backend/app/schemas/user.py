@@ -10,7 +10,7 @@ import re
 class UserBase(BaseModel):
     """Base user schema."""
     email: EmailStr
-    username: str = Field(..., min_length=3, max_length=50)
+    username: Optional[str] = Field(None, min_length=3, max_length=50)
     full_name: Optional[str] = Field(None, max_length=255)
     is_active: bool = True
     is_superuser: bool = False
@@ -29,6 +29,13 @@ class UserCreate(UserBase):
     """Schema for creating a user."""
     password: str = Field(..., min_length=8, max_length=100)
     confirm_password: str
+
+    @field_validator('username', mode='before')
+    @classmethod
+    def username_from_email(cls, v, info):
+        if not v:
+            return info.data['email'].split('@')[0]
+        return v
     
     @field_validator('password')
     @classmethod

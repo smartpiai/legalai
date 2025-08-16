@@ -57,7 +57,7 @@ class APIKey(Base):
     last_ip_address = Column(String(45), nullable=True)
     
     # Metadata
-    metadata = Column(JSON, default=dict)
+    key_metadata = Column(JSON, default=dict)
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -135,7 +135,7 @@ class APIKeyService:
         expires_in_days: Optional[int] = None,
         rate_limit_per_minute: Optional[int] = None,
         rate_limit_per_hour: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        key_metadata: Optional[Dict[str, Any]] = None
     ) -> tuple[APIKey, str]:
         """
         Create a new API key.
@@ -166,7 +166,7 @@ class APIKeyService:
             expires_at=expires_at,
             rate_limit_per_minute=rate_limit_per_minute,
             rate_limit_per_hour=rate_limit_per_hour,
-            metadata=metadata or {}
+            key_metadata=key_metadata or {}
         )
         
         self.db.add(db_api_key)
@@ -365,7 +365,7 @@ class APIKeyService:
             permissions=old_key.permissions,
             rate_limit_per_minute=old_key.rate_limit_per_minute,
             rate_limit_per_hour=old_key.rate_limit_per_hour,
-            metadata={**old_key.metadata, "rotated_from": api_key_id}
+            key_metadata={**old_key.key_metadata, "rotated_from": api_key_id}
         )
 
 

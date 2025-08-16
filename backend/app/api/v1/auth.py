@@ -1,6 +1,8 @@
 """
 Authentication endpoints for user registration, login, and token management.
 """
+import logging
+import uuid
 from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
@@ -95,59 +97,83 @@ async def register(
     db: AsyncSession = Depends(get_async_session)
 ):
     """Register a new user."""
-    # Check if email already exists
-    result = await db.execute(select(User).where(User.email == user_data.email))
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
-        )
-    
-    # Check if username already exists
-    result = await db.execute(select(User).where(User.username == user_data.username))
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already taken"
-        )
-    
-    # Verify tenant exists if provided
-    if user_data.tenant_id:
-        result = await db.execute(select(Tenant).where(Tenant.id == user_data.tenant_id))
-        tenant = result.scalar_one_or_none()
-        if not tenant or not tenant.is_active:
+    try:
+        # Check if email already exists
+        result = await db.execute(select(User).where(User.email == user_data.email))
+        if result.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or inactive tenant"
+                detail="Email already registered"
             )
-    
-    # Create new user
-    hashed_password = get_password_hash(user_data.password)
-    
-    db_user = User(
-        email=user_data.email,
-        username=user_data.username,
-        full_name=user_data.full_name,
-        hashed_password=hashed_password,
-        is_active=user_data.is_active,
-        is_superuser=user_data.is_superuser,
-        tenant_id=user_data.tenant_id,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
-    )
-    
-    try:
+        
+        # Check if username already exists
+        result = await db.execute(select(User).where(User.username == user_data.username))
+        if result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already taken"
+            )
+        
+        tenant_id = user_data.tenant_id
+        if not tenant_id:
+            # Create a new tenant for the user
+            tenant_name = user_data.full_name or user_data.username
+            slug = f"{tenant_name.lower().replace(' ', '-')}-{uuid.uuid4().hex[:6]}"
+            
+            new_tenant = Tenant(
+                name=tenant_name,
+                slug=slug,
+                is_active=True
+            )
+            db.add(new_tenant)
+            await db.flush()
+            tenant_id = new_tenant.id
+        else:
+            # Verify tenant exists if provided
+            result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+            tenant = result.scalar_one_or_none()
+            if not tenant or not tenant.is_active:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid or inactive tenant"
+                )
+        
+        # Create new user
+        hashed_password = get_password_hash(user_data.password)
+        
+        db_user = User(
+            email=user_data.email,
+            username=user_data.username,
+            full_name=user_data.full_name,
+            hashed_password=hashed_password,
+            is_active=True,
+            is_superuser=False, # Default to non-superuser
+            tenant_id=tenant_id,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        
         db.add(db_user)
         await db.commit()
         await db.refresh(db_user)
+        
+        return db_user
     except IntegrityError:
         await db.rollback()
+        logging.error("Registration failed due to integrity error.", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User could not be created"
+            detail="User could not be created due to a database conflict."
         )
-    
-    return db_user
+    except HTTPException as e:
+        logging.error(f"Registration failed: {e.detail}")
+        raise e
+    except Exception as e:
+        logging.error(f"An unexpected error occurred during registration: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An internal server error occurred."
+        )
 
 
 @router.post("/login", response_model=TokenPair)

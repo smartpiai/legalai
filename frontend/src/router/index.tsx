@@ -18,7 +18,7 @@ const PageLoader = () => (
 )
 
 // Lazy load pages for code splitting
-const HomePage = lazy(() => import('@/pages/HomePage'))
+const LegalDashboard = lazy(() => import('@/pages/LegalDashboard'))
 const LoginPage = lazy(() => import('@/pages/LoginPage'))
 const RegisterPage = lazy(() => import('@/pages/RegisterPage'))
 const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage'))
@@ -107,11 +107,7 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <LazyPage Component={HomePage} />
-          },
-          {
-            path: 'dashboard',
-            element: <LazyPage Component={DashboardPage} />
+            element: <LazyPage Component={LegalDashboard} />
           },
           {
             path: 'profile',

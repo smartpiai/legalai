@@ -75,7 +75,7 @@ export default function LoginPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard', { replace: true })
+      navigate('/', { replace: true })
     }
   }, [isAuthenticated, navigate])
 
@@ -129,7 +129,7 @@ export default function LoginPage() {
       {/* Back Link */}
       <div className="w-full max-w-md pt-10 mx-auto lg:hidden">
         <Link
-          to="/dashboard"
+          to="/"
           className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
         >
           ← Back to dashboard
@@ -210,8 +210,11 @@ export default function LoginPage() {
                     placeholder="Enter your email"
                     disabled={isFormDisabled}
                     autoComplete="email"
-                    ref={emailInputRef}
                     {...field}
+                    ref={(el) => {
+                      field.ref(el)
+                      emailInputRef.current = el
+                    }}
                     onChange={(e) => {
                       field.onChange(e)
                       handleInputChange()

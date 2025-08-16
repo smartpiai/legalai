@@ -21,8 +21,10 @@ export interface LoginResponse {
 }
 
 export interface RegisterData {
+  username: string
   email: string
   password: string
+  confirm_password?: string
   full_name?: string
   company_name?: string
 }
@@ -50,7 +52,7 @@ export interface User {
  */
 export async function login(email: string, password: string): Promise<LoginResponse> {
   const response = await apiClient.post<LoginResponse>('/auth/login', {
-    username: email, // API expects username field
+    email: email,
     password,
   })
   return response.data

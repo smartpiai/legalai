@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 import { routeMapping } from '@/router'
 
 const navigationItems = [
-  { href: '/dashboard', label: 'Dashboard' },
+  { href: '/', label: 'Dashboard' },
   { href: '/contracts', label: 'Contracts' },
   { href: '/documents', label: 'Documents' },
   { href: '/templates', label: 'Templates' },
@@ -45,7 +45,7 @@ export function MainLayout() {
             <div className="flex h-16 items-center justify-between">
               {/* Logo and Brand */}
               <div className="flex items-center">
-                <Link to="/dashboard" className="flex items-center space-x-2">
+                <Link to="/" className="flex items-center space-x-2">
                   <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center">
                     <div className="h-4 w-4 rounded-sm bg-primary-foreground" />
                   </div>
@@ -175,7 +175,7 @@ export function MainLayout() {
       {/* Main Content */}
       <main className="flex-1">
         <Container size="full" className="py-6 sm:py-8">
-          <Outlet />
+          <Outlet key={location.pathname} />
         </Container>
       </main>
     </div>

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuthStore } from '@/store/auth';
 import api from '../../services/api';
-import { ContractOverviewWidget } from '../../components/contracts/ContractOverviewWidget';
+import { ContractOverviewWidget, ContractData } from '../../components/contracts/ContractOverviewWidget';
 import { RecentActivityFeed } from '../../components/contracts/RecentActivityFeed';
 import { QuickActionButtons } from '../../components/contracts/QuickActionButtons';
 import { FilterSortControls } from '../../components/contracts/FilterSortControls';
@@ -50,18 +50,6 @@ interface Contract {
   parent_id?: string;
 }
 
-interface ContractStats {
-  total: number;
-  active: number;
-  pending_renewal: number;
-  expired: number;
-  total_value: number;
-  avg_value: number;
-  by_status: Record<string, number>;
-  by_type: Record<string, number>;
-  by_risk: Record<string, number>;
-}
-
 export default function ContractsListPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -70,7 +58,7 @@ export default function ContractsListPage() {
   const [selectedContracts, setSelectedContracts] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<any>({
     status: '',
     type: '',
     startDate: '',
@@ -154,34 +142,15 @@ export default function ContractsListPage() {
     },
   ];
 
-  const mockStats: ContractStats = {
-    total: 156,
-    active: 89,
-    pending_renewal: 12,
-    expired: 23,
-    total_value: 15750000,
-    avg_value: 100961,
-    by_status: {
-      draft: 15,
-      review: 17,
-      approved: 10,
-      active: 89,
-      expired: 23,
-      terminated: 2,
-    },
-    by_type: {
-      'Service Agreement': 45,
-      'Purchase Order': 38,
-      'NDA': 28,
-      'License Agreement': 20,
-      'Employment Contract': 25,
-    },
-    by_risk: {
-      low: 78,
-      medium: 56,
-      high: 18,
-      critical: 4,
-    },
+  const mockStats: ContractData = {
+    totalContracts: 156,
+    activeContracts: 89,
+    pendingReview: 17,
+    expiringThisMonth: 12,
+    draftContracts: 15,
+    approvedContracts: 10,
+    renewalsNeeded: 12,
+    recentlyModified: 5,
   };
 
   const { data: contracts = mockContracts, isLoading, error, refetch } = useQuery({
@@ -192,7 +161,7 @@ export default function ContractsListPage() {
     },
   });
 
-  const { data: stats = mockStats } = useQuery({
+  const { data: stats = mockStats } = useQuery<ContractData>({
     queryKey: ['contract-stats'],
     queryFn: async () => {
       return mockStats;
@@ -229,6 +198,9 @@ export default function ContractsListPage() {
     result.sort((a, b) => {
       const aVal = a[sortBy as keyof Contract];
       const bVal = b[sortBy as keyof Contract];
+      if (aVal === undefined || bVal === undefined) {
+        return 0;
+      }
       const comparison = aVal > bVal ? 1 : -1;
       return sortOrder === 'asc' ? comparison : -comparison;
     });
@@ -360,6 +332,27 @@ export default function ContractsListPage() {
     }
   }, [notification]);
 
+  const filterOptions = {
+    status: [
+      { value: 'active', label: 'Active' },
+      { value: 'review', label: 'Review' },
+      { value: 'draft', label: 'Draft' },
+      { value: 'expired', label: 'Expired' },
+    ],
+    type: [
+      { value: 'Service Agreement', label: 'Service Agreement' },
+      { value: 'Purchase Order', label: 'Purchase Order' },
+      { value: 'NDA', label: 'NDA' },
+    ],
+  };
+
+  const sortOptions = [
+    { value: 'created_at', label: 'Creation Date' },
+    { value: 'end_date', label: 'End Date' },
+    { value: 'value', label: 'Contract Value' },
+    { value: 'title', label: 'Title' },
+  ];
+
   if (isLoading) {
     return (
       <div data-testid="contracts-loading" className="flex items-center justify-center min-h-screen">
@@ -460,7 +453,7 @@ export default function ContractsListPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
           <div className="lg:col-span-3">
-            <ContractOverviewWidget stats={stats} />
+            <ContractOverviewWidget data={stats} />
           </div>
           <div>
             <RecentActivityFeed />
@@ -482,7 +475,11 @@ export default function ContractsListPage() {
                   className="w-full pl-10 pr-3 py-2 border rounded-lg"
                 />
               </div>
-              <FilterSortControls onFilterChange={handleFilterChange} />
+              <FilterSortControls 
+                onFiltersChange={handleFilterChange} 
+                filterOptions={filterOptions}
+                sortOptions={sortOptions}
+              />
               <div className="flex gap-2">
                 <select
                   aria-label="Status filter"
@@ -540,11 +537,9 @@ export default function ContractsListPage() {
 
           {selectedContracts.size > 0 && (
             <BulkOperationsBar
-              selectedItems={Array.from(selectedContracts)}
-              onBulkAction={(action) => {
-                if (action === 'export') handleExport('csv');
-                else if (action === 'status') handleBulkStatusUpdate('approved');
-              }}
+              selectedIds={Array.from(selectedContracts).map(id => parseInt(id.replace('contract', '')))}
+              onSuccess={() => {}}
+              onCancel={() => setSelectedContracts(new Set())}
             />
           )}
 

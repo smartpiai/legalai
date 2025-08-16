@@ -92,9 +92,9 @@ load_environment() {
     fi
     
     # Load environment variables
-    set -a
-    source "$ENV_FILE"
-    set +a
+    if [ -f "$ENV_FILE" ]; then
+        export $(grep -v '^#' "$ENV_FILE" | xargs)
+    fi
     
     print_success "Environment variables loaded"
 }
@@ -435,7 +435,7 @@ EOF
         print_status "Launching Vite development server..."
         
         # Set environment variables for Vite
-        export VITE_API_BASE_URL="${VITE_API_BASE_URL}"
+        export VITE_API_URL="${VITE_API_BASE_URL}"
         export VITE_APP_NAME="${VITE_APP_NAME}"
         export VITE_APP_VERSION="${VITE_APP_VERSION}"
         export VITE_ENABLE_DEBUG="${VITE_ENABLE_DEBUG}"

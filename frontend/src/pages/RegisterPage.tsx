@@ -70,6 +70,7 @@ export default function RegisterPage() {
     resolver: zodResolver(registerSchema),
     mode: 'onChange',
     defaultValues: {
+      username: '',
       firstName: '',
       lastName: '',
       email: '',
@@ -110,15 +111,20 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
-      await registerUser({
+      const success = await registerUser({
+        username: data.username,
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
         password: data.password,
+        confirmPassword: data.confirmPassword,
         organization: data.organization || '',
         department: data.department || '',
         phone: data.phone || ''
       })
+      if (success) {
+        navigate('/login')
+      }
     } catch (err) {
       // Error is handled by the auth store
       console.error('Registration failed:', err)
@@ -188,6 +194,18 @@ export default function RegisterPage() {
                 aria-label="Enter your last name"
               />
             </div>
+
+            <Input
+              {...register('username')}
+              label="Username"
+              type="text"
+              required
+              disabled={isLoading}
+              error={errors.username?.message}
+              placeholder="Choose a username"
+              autoComplete="username"
+              aria-label="Choose a username"
+            />
 
             <Input
               {...register('email')}

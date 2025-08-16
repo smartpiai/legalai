@@ -31,8 +31,14 @@ export const loginSchema = z.object({
  * Register form validation schema
  * Includes additional fields for user registration
  */
-export const registerSchema = z
-  .object({
+const registerObjectSchema = z.object({
+    username: z
+      .string()
+      .min(3, 'Username must be at least 3 characters')
+      .max(50, 'Username is too long')
+      .regex(/^[a-zA-Z0-9_-]+$/, 'Username can only contain letters, numbers, underscores, and hyphens')
+      .trim(),
+      
     firstName: z
       .string()
       .min(1, 'First name is required')
@@ -104,7 +110,9 @@ export const registerSchema = z
     acceptPrivacy: z
       .boolean()
       .refine(val => val === true, 'You must accept the privacy policy'),
-  })
+  });
+
+export const registerSchema = registerObjectSchema
   .refine(data => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
     path: ['confirmPassword'],
@@ -228,7 +236,7 @@ export const validatePassword = (password: string): boolean => {
 }
 
 export const validateStrongPassword = (password: string): boolean => {
-  return registerSchema.shape.password.safeParse(password).success
+  return registerObjectSchema.shape.password.safeParse(password).success
 }
 
 // Password strength calculation

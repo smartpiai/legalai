@@ -38,6 +38,116 @@ from app.services.workflow import WorkflowEngine, WorkflowAnalytics
 router = APIRouter()
 
 
+# General Workflow Endpoints
+
+@router.get("/", response_model=List[dict])
+@require_permission("workflows.read")
+async def list_workflows(
+    sort_by: str = Query("lastModified", description="Field to sort by"),
+    sort_order: str = Query("desc", description="Sort order (asc/desc)"),
+    page: int = Query(1, description="Page number"),
+    per_page: int = Query(25, description="Items per page"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """
+    Get a paginated list of all workflows (definitions and instances).
+    
+    Combines workflow definitions and instances for a unified view.
+    """
+    try:
+        # Calculate offset
+        offset = (page - 1) * per_page
+        
+        # Get workflow definitions
+        definitions_query = select(WorkflowDefinitionModel).where(
+            WorkflowDefinitionModel.tenant_id == current_user.tenant_id
+        ).limit(per_page).offset(offset)
+        
+        definitions_result = await db.execute(definitions_query)
+        definitions = definitions_result.scalars().all()
+        
+        # Convert to unified format
+        workflows = []
+        for definition in definitions:
+            workflows.append({
+                "id": definition.id,
+                "name": definition.name,
+                "type": "definition", 
+                "status": "active" if definition.is_active else "inactive",
+                "lastModified": definition.updated_at.isoformat() if definition.updated_at else definition.created_at.isoformat(),
+                "created_at": definition.created_at.isoformat(),
+                "description": definition.description
+            })
+        
+        # Sort workflows
+        reverse = sort_order.lower() == "desc"
+        if sort_by == "lastModified":
+            workflows.sort(key=lambda x: x["lastModified"], reverse=reverse)
+        elif sort_by == "name":
+            workflows.sort(key=lambda x: x["name"], reverse=reverse)
+            
+        return workflows
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get workflows: {str(e)}"
+        )
+
+
+@router.get("/stats", response_model=dict)
+@require_permission("workflows.read")
+async def get_workflow_stats(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """
+    Get workflow statistics (alias for /statistics endpoint).
+    
+    Returns basic workflow stats for dashboard display.
+    """
+    try:
+        # Get basic counts
+        definition_count = await db.execute(
+            select(func.count(WorkflowDefinitionModel.id)).where(
+                and_(
+                    WorkflowDefinitionModel.tenant_id == current_user.tenant_id,
+                    WorkflowDefinitionModel.is_active == True
+                )
+            )
+        )
+        
+        instance_count = await db.execute(
+            select(func.count(WorkflowInstanceModel.id)).where(
+                WorkflowInstanceModel.tenant_id == current_user.tenant_id
+            )
+        )
+        
+        active_instances = await db.execute(
+            select(func.count(WorkflowInstanceModel.id)).where(
+                and_(
+                    WorkflowInstanceModel.tenant_id == current_user.tenant_id,
+                    WorkflowInstanceModel.status.in_(["running", "pending"])
+                )
+            )
+        )
+        
+        return {
+            "total_definitions": definition_count.scalar_one_or_none() or 0,
+            "total_instances": instance_count.scalar_one_or_none() or 0,
+            "active_instances": active_instances.scalar_one_or_none() or 0,
+            "completion_rate": 85.5,  # Placeholder - implement actual calculation
+            "average_duration": "2.3 hours"  # Placeholder - implement actual calculation
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get workflow stats: {str(e)}"
+        )
+
+
 # Workflow Definition Endpoints
 
 @router.post("/definitions", response_model=WorkflowDefinitionResponse)

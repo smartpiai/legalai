@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 import { routeMapping } from '@/router'
 
 const navigationItems = [
-  { href: '/', label: 'Dashboard' },
+  { href: '/dashboard', label: 'Dashboard' },
   { href: '/contracts', label: 'Contracts' },
   { href: '/documents', label: 'Documents' },
   { href: '/templates', label: 'Templates' },
@@ -31,9 +31,8 @@ export function MainLayout() {
     return location.pathname.startsWith(href)
   }
 
-  const handleLogout = async () => {
-    await logout()
-    setUserMenuOpen(false)
+  const handleLogout = () => {
+    logout()
   }
 
   return (

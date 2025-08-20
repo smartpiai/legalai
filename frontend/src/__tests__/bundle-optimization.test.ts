@@ -25,11 +25,9 @@ describe('Bundle Optimization', () => {
       const { AppRouter } = await import('../router/AppRouter');
       
       render(
-        <BrowserRouter>
-          <Suspense fallback={<div>Loading...</div>}>
-            <AppRouter />
-          </Suspense>
-        </BrowserRouter>
+        React.createElement(BrowserRouter, {},
+          React.createElement(Suspense, { fallback: React.createElement('div', {}, 'Loading...') },
+            React.createElement(AppRouter)))
       );
       
       // Should show loading state initially
@@ -97,15 +95,14 @@ describe('Bundle Optimization', () => {
     it('should retry failed chunk loads', async () => {
       const mockImport = vi.fn()
         .mockRejectedValueOnce(new Error('Network error'))
-        .mockResolvedValueOnce({ default: () => <div>Component Loaded</div> });
+        .mockResolvedValueOnce({ default: () => React.createElement('div', {}, 'Component Loaded') });
       
       const { lazyWithRetry } = await import('../utils/lazyWithRetry');
       const LazyComponent = lazyWithRetry(mockImport);
       
       render(
-        <Suspense fallback={<div>Loading...</div>}>
-          <LazyComponent />
-        </Suspense>
+        React.createElement(Suspense, { fallback: React.createElement('div', {}, 'Loading...') },
+          React.createElement(LazyComponent))
       );
       
       await waitFor(() => {
@@ -132,16 +129,14 @@ describe('Bundle Optimization', () => {
           return () => window.removeEventListener('unhandledrejection', handleError);
         }, []);
         
-        if (hasError) return <div>Failed to load component</div>;
-        return <>{children}</>;
+        if (hasError) return React.createElement('div', {}, 'Failed to load component');
+        return React.createElement(React.Fragment, {}, children);
       };
       
       render(
-        <ErrorBoundary>
-          <Suspense fallback={<div>Loading...</div>}>
-            <LazyComponent />
-          </Suspense>
-        </ErrorBoundary>
+        React.createElement(ErrorBoundary, {},
+          React.createElement(Suspense, { fallback: React.createElement('div', {}, 'Loading...') },
+            React.createElement(LazyComponent)))
       );
       
       await waitFor(() => {
@@ -184,9 +179,8 @@ describe('Bundle Optimization', () => {
       const { NavLink } = await import('../components/navigation/NavLink');
       
       const { container } = render(
-        <BrowserRouter>
-          <NavLink to="/contracts" preload>Contracts</NavLink>
-        </BrowserRouter>
+        React.createElement(BrowserRouter, {},
+          React.createElement(NavLink, { to: "/contracts", preload: true }, 'Contracts'))
       );
       
       const link = container.querySelector('a');
@@ -230,9 +224,8 @@ describe('Bundle Optimization', () => {
       const { LazyLoadWrapper } = await import('../components/LazyLoadWrapper');
       
       render(
-        <LazyLoadWrapper>
-          <div>Content</div>
-        </LazyLoadWrapper>
+        React.createElement(LazyLoadWrapper, {},
+          React.createElement('div', {}, 'Content'))
       );
       
       expect(mockObserve).toHaveBeenCalled();

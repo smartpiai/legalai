@@ -28,7 +28,7 @@ interface AuthState {
   error: string | null
   
   // Actions
-  login: (email: string, password: string) => Promise<User | null>
+  login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   register: (data: RegisterData) => Promise<boolean>
   refreshAccessToken: () => Promise<void>
@@ -79,13 +79,18 @@ export const useAuthStore = create<AuthState>()(
       (set, get) => ({
         ...initialState,
         
-        login: async (email, password) => {
-          set({ isLoading: true, error: null });
+        login: async (email: string, password: string) => {
+          set({ isLoading: true, error: null })
+          
           try {
-            const response = await authService.login(email, password);
-            const { access_token, refresh_token, user } = response;
-            localStorage.setItem('auth-token', access_token);
-            localStorage.setItem('refresh-token', refresh_token);
+            const response = await authService.login(email, password)
+            
+            const { access_token, refresh_token, user } = response
+            
+            // Store tokens in localStorage
+            localStorage.setItem('auth-token', access_token)
+            localStorage.setItem('refresh-token', refresh_token)
+            
             set({
               user,
               token: access_token,
@@ -93,15 +98,13 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: true,
               isLoading: false,
               error: null,
-            });
-            return user;
-          } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Login failed';
+            })
+          } catch (error: any) {
             set({
               isLoading: false,
-              error: errorMessage,
-            });
-            return null;
+              error: error.message || 'Login failed',
+            })
+            throw error
           }
         },
         
@@ -287,3 +290,6 @@ export const useAuthStore = create<AuthState>()(
     )
   )
 )
+
+// Export store instance for testing
+export const authStore = useAuthStore

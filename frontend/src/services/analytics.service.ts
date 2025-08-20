@@ -3,8 +3,7 @@
  * Provides analytics data operations and metrics retrieval
  */
 
-import axios, { AxiosInstance } from 'axios';
-import { useAuthStore } from '../store/auth';
+import { apiClient } from './apiClient';
 
 interface KPISummary {
   totalContracts: number;
@@ -118,13 +117,10 @@ export class AnalyticsService {
   private api: AxiosInstance;
 
   constructor() {
-    this.api = axios.create({
-      baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-      timeout: 30000,
-    });
+    apiClient = // Using centralized apiClient;
 
     // Add auth headers
-    this.api.interceptors.request.use((config) => {
+    apiClient.interceptors.request.use((config) => {
       const state = useAuthStore.getState();
       const token = state.token;
       if (token) {
@@ -138,44 +134,44 @@ export class AnalyticsService {
   }
 
   async getKPIMetrics(params?: { timeRange?: string; tenantId?: string }): Promise<KPIMetrics> {
-    const response = await this.api.get('/api/v1/analytics/kpi', { params });
+    const response = await apiClient.get('/analytics/kpi', { params });
     return response.data;
   }
 
   async getPerformanceMetrics(): Promise<PerformanceMetrics> {
-    const response = await this.api.get('/api/v1/analytics/performance');
+    const response = await apiClient.get('/analytics/performance');
     return response.data;
   }
 
   async getContractMetrics(): Promise<ContractMetrics> {
-    const response = await this.api.get('/api/v1/analytics/contracts');
+    const response = await apiClient.get('/analytics/contracts');
     return response.data;
   }
 
   async getUserActivityMetrics(): Promise<UserMetrics> {
-    const response = await this.api.get('/api/v1/analytics/users');
+    const response = await apiClient.get('/analytics/users');
     return response.data;
   }
 
   async getComplianceMetrics(): Promise<ComplianceMetrics> {
-    const response = await this.api.get('/api/v1/analytics/compliance');
+    const response = await apiClient.get('/analytics/compliance');
     return response.data;
   }
 
   async getRevenueMetrics(): Promise<RevenueMetrics> {
-    const response = await this.api.get('/api/v1/analytics/revenue');
+    const response = await apiClient.get('/analytics/revenue');
     return response.data;
   }
 
   async getTrendData(metric: string, period: string): Promise<Array<any>> {
-    const response = await this.api.get(`/api/v1/analytics/trends/${metric}`, {
+    const response = await apiClient.get(`/analytics/trends/${metric}`, {
       params: { period },
     });
     return response.data;
   }
 
   async getBenchmarks(): Promise<Benchmark> {
-    const response = await this.api.get('/api/v1/analytics/benchmarks');
+    const response = await apiClient.get('/analytics/benchmarks');
     return response.data;
   }
 
@@ -185,12 +181,12 @@ export class AnalyticsService {
     metrics?: string[];
     includeCharts?: boolean;
   }): Promise<{ url: string }> {
-    const response = await this.api.post('/api/v1/analytics/export', params);
+    const response = await apiClient.post('/analytics/export', params);
     return response.data;
   }
 
   async getAlerts(): Promise<Alert[]> {
-    const response = await this.api.get('/api/v1/analytics/alerts');
+    const response = await apiClient.get('/analytics/alerts');
     return response.data;
   }
 
@@ -198,11 +194,11 @@ export class AnalyticsService {
     metric: string;
     threshold: number;
   }): Promise<void> {
-    await this.api.put('/api/v1/analytics/alerts/threshold', params);
+    await apiClient.put('/analytics/alerts/threshold', params);
   }
 
   async getComparativeAnalysis(period: string): Promise<ComparativeAnalysis> {
-    const response = await this.api.get('/api/v1/analytics/compare', {
+    const response = await apiClient.get('/analytics/compare', {
       params: { period },
     });
     return response.data;
@@ -215,7 +211,7 @@ export class AnalyticsService {
     recipients: string[];
     metrics: string[];
   }): Promise<{ id: string }> {
-    const response = await this.api.post('/api/v1/analytics/schedule', params);
+    const response = await apiClient.post('/analytics/schedule', params);
     return response.data;
   }
 }

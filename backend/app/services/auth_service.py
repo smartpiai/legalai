@@ -157,7 +157,7 @@ class AuthService:
             stored_token.revoke(reason)
             await self.db.commit()
     
-    async def revoke_all_user_tokens(self, user_id: str, reason: str = "Logout"):
+    async def revoke_all_user_tokens(self, user_id: int, reason: str = "Logout"):
         """Revoke all refresh tokens for a user."""
         await self.db.execute(
             update(RefreshToken)
@@ -210,7 +210,7 @@ class AuthService:
         )
         await self.db.commit()
     
-    async def get_active_sessions(self, user_id: str) -> list:
+    async def get_active_sessions(self, user_id: int) -> list:
         """Get all active sessions for a user."""
         result = await self.db.execute(
             select(RefreshToken).where(

@@ -245,13 +245,6 @@ class WorkflowService {
     return response.data
   }
 
-  /**
-   * Get workflow statistics
-   */
-  async getWorkflowStats(): Promise<WorkflowStats> {
-    const response = await apiClient.get<WorkflowStats>('/workflow/stats')
-    return response.data
-  }
 
   /**
    * Export tasks

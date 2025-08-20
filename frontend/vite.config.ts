@@ -54,7 +54,7 @@ export default defineConfig(({ mode }) => {
           manualChunks: {
             vendor: ['react', 'react-dom'],
             router: ['react-router-dom'],
-            ui: ['@headlessui/react', '@heroicons/react'],
+            ui: ['@heroicons/react', '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
           },
         },
       },

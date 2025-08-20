@@ -75,7 +75,7 @@ export default function LoginPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/', { replace: true })
+      navigate('/dashboard', { replace: true })
     }
   }, [isAuthenticated, navigate])
 
@@ -89,18 +89,17 @@ export default function LoginPage() {
   // Form submission handler
   const onSubmit = async (data: LoginFormData) => {
     try {
-      clearErrors()
-      await login(data.email, data.password)
-      
-      // Reset form after successful login
-      reset()
-      
-      // Navigation is handled by the auth store/redirect effect
+      clearErrors();
+      const user = await login(data.email, data.password);
+      if (user) {
+        reset();
+        navigate('/dashboard', { replace: true });
+      }
     } catch (err) {
       // Error is handled by auth store
-      console.error('Login error:', err)
+      console.error('Login error:', err);
     }
-  }
+  };
 
   // Password visibility toggle
   const togglePasswordVisibility = () => {
@@ -287,7 +286,7 @@ export default function LoginPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <input
-                  id="remember-me"
+                  id="rememberMe"
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
@@ -295,7 +294,7 @@ export default function LoginPage() {
                   className="h-4 w-4 text-brand-600 focus:ring-brand-500 border-gray-300 rounded disabled:opacity-50"
                 />
                 <label 
-                  htmlFor="remember-me" 
+                  htmlFor="rememberMe" 
                   className="block font-normal text-gray-700 text-theme-sm dark:text-gray-400 cursor-pointer"
                 >
                   Keep me logged in

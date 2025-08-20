@@ -367,7 +367,7 @@ async def logout(
     # Revoke all user tokens if requested or just current session
     if logout_request and logout_request.all_devices:
         await auth_service.revoke_all_user_tokens(
-            user_id=str(current_user.id),
+            user_id=current_user.id,
             reason="User logout from all devices"
         )
         message = "Successfully logged out from all devices"
@@ -375,7 +375,7 @@ async def logout(
         # In production, we would track the specific token family
         # For now, revoke all tokens (can be improved with session tracking)
         await auth_service.revoke_all_user_tokens(
-            user_id=str(current_user.id),
+            user_id=current_user.id,
             reason="User logout"
         )
         message = "Successfully logged out"
@@ -391,7 +391,7 @@ async def get_active_sessions(
 ):
     """Get all active sessions for the current user."""
     auth_service = AuthService(db)
-    sessions = await auth_service.get_active_sessions(str(current_user.id))
+    sessions = await auth_service.get_active_sessions(current_user.id)
     
     return ActiveSessionsResponse(
         sessions=sessions,

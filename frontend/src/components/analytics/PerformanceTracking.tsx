@@ -11,6 +11,44 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell
 } from 'recharts';
 import { analyticsService } from '../../services/analytics.service';
+
+// Import types from analytics service
+interface KPISummary {
+  totalContracts: number;
+  activeContracts: number;
+  contractValue: number;
+  complianceRate: number;
+  avgProcessingTime: number;
+  userSatisfaction: number;
+}
+
+interface TrendData {
+  daily: Array<{ date: string; contracts: number; value: number; time: number }>;
+  weekly: Array<{ week: string; contracts: number; value: number; compliance: number }>;
+  monthly: Array<{ month: string; contracts: number; value: number; satisfaction: number }>;
+}
+
+interface KPITargets {
+  contractsTarget: number;
+  valueTarget: number;
+  complianceTarget: number;
+  processingTarget: number;
+  satisfactionTarget: number;
+}
+
+interface KPIMetrics {
+  summary: KPISummary;
+  trends: TrendData;
+  targets: KPITargets;
+}
+
+interface Alert {
+  id: string;
+  metric: string;
+  current: number;
+  threshold: number;
+  severity: 'info' | 'warning' | 'critical';
+}
 import { useAuthStore } from '../../store/auth';
 import { format, subDays, subMonths, subYears } from 'date-fns';
 
@@ -61,15 +99,21 @@ export const PerformanceTracking: React.FC<PerformanceTrackingProps> = ({
   const [showBenchmarkDialog, setShowBenchmarkDialog] = useState(false);
 
   // Fetch KPI metrics
-  const { data: kpiData, isLoading: kpiLoading, refetch: refetchKPI, error: kpiError } = useQuery({
+  const { data: kpiData, isLoading: kpiLoading, refetch: refetchKPI, error: kpiError } = useQuery<KPIMetrics>({
     queryKey: ['kpiMetrics', timeRange, user?.tenant_id],
     queryFn: () => analyticsService.getKPIMetrics({ 
       timeRange, 
-      tenantId: user?.tenant_id 
+      tenantId: user?.tenant_id?.toString() 
     }),
     refetchInterval: isAutoRefresh ? refreshInterval : false,
-    onSuccess: () => setLastUpdated(new Date()),
   });
+
+  // Handle successful KPI data fetch
+  useEffect(() => {
+    if (kpiData) {
+      setLastUpdated(new Date());
+    }
+  }, [kpiData]);
 
   // Fetch performance metrics
   const { data: performanceData } = useQuery({
@@ -107,15 +151,17 @@ export const PerformanceTracking: React.FC<PerformanceTrackingProps> = ({
   });
 
   // Fetch alerts
-  const { data: alerts } = useQuery({
+  const { data: alerts } = useQuery<Alert[]>({
     queryKey: ['alerts'],
     queryFn: () => analyticsService.getAlerts(),
-    onSuccess: (data) => {
-      if (onAlertTriggered) {
-        onAlertTriggered(data);
-      }
-    },
   });
+
+  // Handle successful alerts fetch
+  useEffect(() => {
+    if (alerts && onAlertTriggered) {
+      onAlertTriggered(alerts);
+    }
+  }, [alerts, onAlertTriggered]);
 
   // Fetch benchmarks
   const { data: benchmarks } = useQuery({

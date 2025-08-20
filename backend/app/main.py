@@ -44,6 +44,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "font-src 'self' data:; "
             "connect-src 'self'"
         )
+        response.headers["Access-Control-Allow-Private-Network"] = "true"
         
         return response
 

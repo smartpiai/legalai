@@ -2,17 +2,26 @@
  * LoginPage with Dashboard Styling
  * Professional login form following TailAdmin patterns
  */
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useAuthStore } from '../store/auth'
 
 export default function LoginPageDashboard() {
   const navigate = useNavigate()
+  const { login, isAuthenticated, isLoading, error, setError } = useAuthStore()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+
+  // Redirect to dashboard when authenticated
+  useEffect(() => {
+    console.log('LoginPageDashboard: Auth state changed', { isAuthenticated })
+    if (isAuthenticated) {
+      console.log('LoginPageDashboard: Navigating to dashboard')
+      navigate('/dashboard', { replace: true })
+    }
+  }, [isAuthenticated, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -22,39 +31,23 @@ export default function LoginPageDashboard() {
       return
     }
 
-    setIsLoading(true)
-    setError(null)
-
     try {
-      // Test API call
-      const response = await fetch('http://192.168.1.4:18001/api/v1/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: email,
-          password: password,
-        }),
-      })
+      console.log('LoginPageDashboard: Starting login process')
+      // Use auth store login method instead of direct fetch
+      await login(email, password)
+      console.log('LoginPageDashboard: Login completed successfully')
       
-      if (response.ok) {
-        navigate('/dashboard')
-      } else {
-        const errorData = await response.json()
-        // Handle validation errors properly
-        if (Array.isArray(errorData.detail)) {
-          const firstError = errorData.detail[0]
-          setError(firstError.msg || 'Login failed')
-        } else {
-          setError(errorData.detail || 'Login failed')
+      // Add manual navigation as backup (in case useEffect doesn't trigger)
+      setTimeout(() => {
+        console.log('LoginPageDashboard: Backup navigation check', { isAuthenticated })
+        if (isAuthenticated) {
+          console.log('LoginPageDashboard: Backup navigation triggered')
+          navigate('/dashboard', { replace: true })
         }
-      }
+      }, 100)
     } catch (err) {
-      setError('Network error occurred')
-      console.error('Login error:', err)
-    } finally {
-      setIsLoading(false)
+      // Error is handled by auth store, but we can log it
+      console.error('LoginPageDashboard: Login error:', err)
     }
   }
 

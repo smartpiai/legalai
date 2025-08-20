@@ -85,7 +85,7 @@ configure_environment() {
         ["FRONTEND_PORT"]=3000
         ["SECRET_KEY"]="a_very_secret_dev_key_change_in_prod"
         ["JWT_SECRET_KEY"]="a_very_secret_jwt_dev_key_change_in_prod"
-        ["ALLOWED_HOSTS"]="localhost,127.0.0.1,192.168.1.4"
+        ["ALLOWED_HOSTS"]="localhost,127.0.0.1,192.168.1.4,legal.smartpi.ai"
         ["LOG_LEVEL"]="DEBUG"
     )
 
@@ -117,9 +117,9 @@ configure_environment() {
     print_status "Finalizing dynamic configuration..."
     set -a; source "$ENV_FILE"; set +a
 
-    update_env_port "$ENV_FILE" "VITE_API_BASE_URL" "http://${PUBLIC_IP}:${BACKEND_PORT}/api/v1"
+    update_env_port "$ENV_FILE" "VITE_API_BASE_URL" "/api/v1"
     update_env_port "$ENV_FILE" "DATABASE_URL" "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:${POSTGRES_PORT}/${POSTGRES_DB}"
-    update_env_port "$ENV_FILE" "BACKEND_CORS_ORIGINS" "http://localhost:3000,http://localhost:8000,http://${PUBLIC_IP}:${FRONTEND_PORT}"
+    update_env_port "$ENV_FILE" "BACKEND_CORS_ORIGINS" "http://localhost:3000,http://localhost:8000,http://${PUBLIC_IP}:${FRONTEND_PORT},https://legal.smartpi.ai"
     update_env_port "$ENV_FILE" "NEO4J_AUTH" "${NEO4J_USER}/${NEO4J_PASSWORD}"
     update_env_port "$ENV_FILE" "MINIO_ENDPOINT" "localhost:${MINIO_PORT}"
 

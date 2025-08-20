@@ -3,7 +3,7 @@
  * Implements protected routes and role-based access
  */
 import { lazy, Suspense } from 'react'
-import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Outlet, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/routing/ProtectedRoute'
 
 // Layout components (loaded immediately)
@@ -107,6 +107,10 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
+            element: <Navigate to="/dashboard" replace />
+          },
+          {
+            path: 'dashboard',
             element: <LazyPage Component={LegalDashboard} />
           },
           {

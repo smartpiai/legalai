@@ -5,11 +5,11 @@ import '@testing-library/jest-dom';
 import { BulkOperationsBar } from '../BulkOperationsBar';
 import { useAuthStore } from '../../../store/auth';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { toast } from 'react-toastify';
+import { toast } from 'sonner';
 
 // Mock stores and utilities
 vi.mock('../../../store/auth');
-vi.mock('react-toastify', () => ({
+vi.mock('sonner', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),

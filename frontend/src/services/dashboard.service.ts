@@ -127,16 +127,13 @@ export class DashboardService {
   private reconnecting: boolean = false;
 
   constructor() {
-    this.api = axios.create({
-      baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-      timeout: 30000,
-    });
+    // Using centralized apiClient
 
     this.cache = new Map();
     this.pendingRequests = new Map();
 
     // Add request interceptor for auth and tenant headers
-    this.api.interceptors.request.use((config) => {
+    apiClient.interceptors.request.use((config) => {
       const state = useAuthStore.getState();
       const token = state.token;
       const user = state.user;
@@ -153,7 +150,7 @@ export class DashboardService {
     });
 
     // Add response interceptor for error handling
-    this.api.interceptors.response.use(
+    apiClient.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
         if (error.code === 'ECONNABORTED') {
@@ -171,7 +168,7 @@ export class DashboardService {
         if (error.response?.status === 503 && this.retryAttempts > 0) {
           // Retry on service unavailable
           await this.delay(this.retryDelay);
-          return this.api.request(error.config!);
+          return apiClient.request(error.config!);
         }
 
         throw error;
@@ -231,7 +228,7 @@ export class DashboardService {
   }
 
   async getExecutiveSummary(): Promise<ExecutiveSummary> {
-    const cacheKey = this.getCacheKey('/api/v1/dashboard/executive-summary');
+    const cacheKey = this.getCacheKey('/dashboard/executive-summary');
     
     // Check cache first
     const cached = this.getFromCache<ExecutiveSummary>(cacheKey);
@@ -242,8 +239,8 @@ export class DashboardService {
     try {
       // Deduplicate simultaneous requests
       const data = await this.deduplicateRequest(cacheKey, async () => {
-        const response = await this.api.get<ExecutiveSummary>(
-          '/api/v1/dashboard/executive-summary'
+        const response = await apiClient.get<ExecutiveSummary>(
+          '/dashboard/executive-summary'
         );
         return response.data;
       });
@@ -284,7 +281,7 @@ export class DashboardService {
       ...(endDate && { end_date: endDate }),
     };
 
-    const cacheKey = this.getCacheKey('/api/v1/dashboard/contract-metrics', params);
+    const cacheKey = this.getCacheKey('/dashboard/contract-metrics', params);
     
     // Check cache
     const cached = this.getFromCache<ContractMetrics>(cacheKey);
@@ -293,8 +290,8 @@ export class DashboardService {
     }
 
     try {
-      const response = await this.api.get<ContractMetrics>(
-        '/api/v1/dashboard/contract-metrics',
+      const response = await apiClient.get<ContractMetrics>(
+        '/dashboard/contract-metrics',
         { params }
       );
       
@@ -308,7 +305,7 @@ export class DashboardService {
   }
 
   async getRiskAnalytics(): Promise<RiskAnalytics> {
-    const cacheKey = this.getCacheKey('/api/v1/dashboard/risk-analytics');
+    const cacheKey = this.getCacheKey('/dashboard/risk-analytics');
     
     // Check cache
     const cached = this.getFromCache<RiskAnalytics>(cacheKey);
@@ -317,8 +314,8 @@ export class DashboardService {
     }
 
     try {
-      const response = await this.api.get<RiskAnalytics>(
-        '/api/v1/dashboard/risk-analytics'
+      const response = await apiClient.get<RiskAnalytics>(
+        '/dashboard/risk-analytics'
       );
       
       // Cache the result
@@ -347,8 +344,8 @@ export class DashboardService {
     };
 
     try {
-      const response = await this.api.get<PaginatedActivities>(
-        '/api/v1/dashboard/activities',
+      const response = await apiClient.get<PaginatedActivities>(
+        '/dashboard/activities',
         { params }
       );
       return response.data;
@@ -360,7 +357,7 @@ export class DashboardService {
 
   async getNotifications(): Promise<Notification[]> {
     try {
-      const response = await this.api.get<Notification[]>('/api/v1/notifications');
+      const response = await apiClient.get<Notification[]>('/api/v1/notifications');
       return response.data;
     } catch (error) {
       console.error('Dashboard API Error:', error);
@@ -370,7 +367,7 @@ export class DashboardService {
 
   async markNotificationAsRead(notificationId: string): Promise<{ success: boolean }> {
     try {
-      const response = await this.api.put<{ success: boolean }>(
+      const response = await apiClient.put<{ success: boolean }>(
         `/api/v1/notifications/${notificationId}/read`
       );
       return response.data;
@@ -382,7 +379,7 @@ export class DashboardService {
 
   async clearAllNotifications(): Promise<{ cleared_count: number }> {
     try {
-      const response = await this.api.post<{ cleared_count: number }>(
+      const response = await apiClient.post<{ cleared_count: number }>(
         '/api/v1/notifications/clear-all'
       );
       

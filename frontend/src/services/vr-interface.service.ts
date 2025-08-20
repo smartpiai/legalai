@@ -1,3 +1,46 @@
+// Type declarations for WebXR API (since types are not installed)
+declare global {
+  interface Navigator {
+    xr?: {
+      isSessionSupported: (mode: string) => Promise<boolean>;
+      requestSession: (mode: string, options?: any) => Promise<any>;
+    };
+  }
+  
+  interface XRSession {
+    end: () => Promise<void>;
+    addEventListener: (type: string, listener: any) => void;
+    removeEventListener: (type: string, listener: any) => void;
+    requestReferenceSpace: (type: string) => Promise<any>;
+    requestAnimationFrame: (callback: any) => number;
+  }
+  
+  interface XRReferenceSpace {
+    // XR reference space interface
+  }
+  
+  interface XRSessionInit {
+    optionalFeatures?: string[];
+    requiredFeatures?: string[];
+  }
+  
+  interface XRInputSourceChangeEvent {
+    // XR input source change event
+  }
+  
+  interface XRFrame {
+    getViewerPose: (referenceSpace: any) => any;
+  }
+  
+  interface XRInputSource {
+    // XR input source interface
+  }
+  
+  interface XRPose {
+    // XR pose interface
+  }
+}
+
 import {
   VRSession,
   VRDevice,

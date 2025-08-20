@@ -18,7 +18,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    return  # Skip this migration for now
+    # RBAC migration enabled - creating roles and permissions tables
     # Create permissions table
     op.create_table('permissions',
         sa.Column('id', sa.Integer(), nullable=False),

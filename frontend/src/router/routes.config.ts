@@ -3,6 +3,7 @@
  * Following TDD - GREEN phase: Implementing lazy loaded routes
  */
 
+import React from 'react';
 import { lazyWithPreload } from '../utils/lazyWithRetry';
 import { RouteObject } from 'react-router-dom';
 
@@ -64,62 +65,62 @@ export const TemplateBuilderComponent = lazyWithPreload(
 export const routes: RouteObject[] = [
   {
     path: '/',
-    element: <DashboardRoute />,
+    element: React.createElement(DashboardRoute),
     children: []
   },
   {
     path: '/contracts',
-    element: <ContractsRoute />,
+    element: React.createElement(ContractsRoute),
     children: [
       {
         path: ':id',
-        element: <ContractEditorComponent />
+        element: React.createElement(ContractEditorComponent)
       },
       {
         path: ':id/pdf',
-        element: <PDFViewerComponent />
+        element: React.createElement(PDFViewerComponent)
       }
     ]
   },
   {
     path: '/templates',
-    element: <TemplatesRoute />,
+    element: React.createElement(TemplatesRoute),
     children: [
       {
         path: 'builder',
-        element: <TemplateBuilderComponent />
+        element: React.createElement(TemplateBuilderComponent)
       }
     ]
   },
   {
     path: '/analytics',
-    element: <AnalyticsRoute />,
+    element: React.createElement(AnalyticsRoute),
     children: [
       {
         path: 'performance',
-        element: <PerformanceTrackingComponent />
+        element: React.createElement(PerformanceTrackingComponent)
       },
       {
         path: 'graph',
-        element: <InteractiveGraphExplorerComponent />
+        element: React.createElement(InteractiveGraphExplorerComponent)
       }
     ]
   },
   {
     path: '/workflow',
-    element: <WorkflowRoute />
+    element: React.createElement(WorkflowRoute)
   },
   {
     path: '/admin',
-    element: <AdminRoute />
+    element: React.createElement(AdminRoute)
   },
   {
     path: '/profile',
-    element: <ProfileRoute />
+    element: React.createElement(ProfileRoute)
   },
   {
     path: '/settings',
-    element: <SettingsRoute />
+    element: React.createElement(SettingsRoute)
   }
 ];
 

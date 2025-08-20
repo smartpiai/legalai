@@ -44,16 +44,17 @@ export default function RegisterPageDashboard() {
     setError(null)
 
     try {
-      const response = await fetch('http://192.168.1.4:18001/api/v1/auth/register', {
+      const response = await fetch('/api/v1/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           email: formData.email,
+          username: formData.email.split('@')[0], // Generate username from email
           password: formData.password,
+          confirm_password: formData.confirmPassword,
           full_name: `${formData.firstName} ${formData.lastName}`,
-          company_name: formData.organization || undefined,
         }),
       })
       

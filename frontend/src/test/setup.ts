@@ -41,7 +41,7 @@ global.ResizeObserver = vi.fn().mockImplementation(() => ({
 }))
 
 // Mock scrollTo (for navigation)
-window.scrollTo = vi.fn()
+window.scrollTo = vi.fn() as any
 
 // Mock alert (for user notifications)
 window.alert = vi.fn()

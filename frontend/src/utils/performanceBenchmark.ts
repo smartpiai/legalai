@@ -3,6 +3,17 @@
  * Following TDD - GREEN phase: Implementation for performance monitoring
  */
 
+// Extend Performance interface for memory API
+declare global {
+  interface Performance {
+    memory?: {
+      usedJSHeapSize: number;
+      totalJSHeapSize: number;
+      jsHeapSizeLimit: number;
+    };
+  }
+}
+
 interface RenderMetric {
   component: string;
   duration: number;
@@ -631,7 +642,7 @@ export function generatePerformanceReport(options: any): any {
 /**
  * Get performance metrics
  */
-export function getPerformanceMetrics(type?: string): any {
+export function getPerformanceMetrics(type?: string): PerformanceData | { apiLatency: Record<string, { data: ApiMetric[]; count: number }> } {
   if (type === 'api') {
     return { apiLatency: performanceData.apiLatency };
   }

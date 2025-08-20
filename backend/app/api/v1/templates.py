@@ -78,6 +78,66 @@ async def create_template(
 
 
 @router.get(
+    "/",
+    response_model=TemplateListResponse,
+    summary="Get all templates with pagination and filtering",
+    dependencies=[Depends(require_permission("templates:read"))]
+)
+async def get_templates(
+    limit: int = Query(25, description="Number of templates to return"),
+    offset: int = Query(0, description="Number of templates to skip"),
+    search: str = Query("", description="Search query for template name or content"),
+    category: Optional[str] = Query(None, description="Filter by template category"),
+    is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session)
+) -> TemplateListResponse:
+    """
+    Get a paginated list of templates with optional filtering.
+    
+    - Supports pagination with limit/offset
+    - Search by template name or content
+    - Filter by category and active status
+    - Returns template metadata and statistics
+    """
+    try:
+        service = TemplateService(db)
+        
+        # Build filters
+        filters = {
+            "limit": limit,
+            "offset": offset,
+            "search": search if search else None,
+            "category": category,
+            "is_active": is_active,
+            "tenant_id": current_user.tenant_id
+        }
+        
+        # Remove None values
+        filters = {k: v for k, v in filters.items() if v is not None}
+        
+        templates = await service.get_templates(filters)
+        return templates
+        
+    except EntityNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Failed to get templates: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get templates"
+        )
+
+
+@router.get(
     "/{template_id}",
     response_model=TemplateResponse,
     summary="Get template by ID",

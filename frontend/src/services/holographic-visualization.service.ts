@@ -1,3 +1,8 @@
+// Type declaration for THREE.js (since types are not installed)
+declare global {
+  const THREE: any;
+}
+
 import {
   Hologram,
   HologramType,

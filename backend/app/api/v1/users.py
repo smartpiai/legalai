@@ -5,7 +5,7 @@ from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, and_
 from sqlalchemy.exc import IntegrityError
 
 from app.core.database import get_async_session
@@ -22,6 +22,47 @@ from app.schemas.user import (
 from pydantic import BaseModel, EmailStr
 
 router = APIRouter()
+
+
+@router.get("/assignees", response_model=List[dict])
+async def get_assignees(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """
+    Get list of users that can be assigned to workflows/tasks.
+    
+    Returns active users in the same tenant.
+    """
+    try:
+        # Get active users in the same tenant
+        query = select(User).where(
+            and_(
+                User.tenant_id == current_user.tenant_id,
+                User.is_active == True
+            )
+        ).order_by(User.full_name)
+        
+        result = await db.execute(query)
+        users = result.scalars().all()
+        
+        # Return simplified user data for assignment
+        assignees = []
+        for user in users:
+            assignees.append({
+                "id": user.id,
+                "email": user.email,
+                "full_name": user.full_name or user.email.split('@')[0],
+                "is_active": user.is_active
+            })
+            
+        return assignees
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get assignees: {str(e)}"
+        )
 
 
 class PasswordChange(BaseModel):

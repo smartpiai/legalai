@@ -80,7 +80,7 @@ update_env_var() {
     local value=$2
     
     if grep -q "^$key=" "$ENV_FILE"; then
-        sed -i "s|^$key=.*|$key=$value|" "$ENV_FILE"
+        sed -i.tmp "s|^$key=.*|$key=$value|" "$ENV_FILE" && rm -f "${ENV_FILE}.tmp"
     else
         echo "$key=$value" >> "$ENV_FILE"
     fi
@@ -98,48 +98,48 @@ backup_env_file() {
 detect_machine_ip() {
     local detected_ip=""
     
-    print_status "Detecting machine IP address..."
-    
+    print_status "Detecting machine IP address..." >&2
+
     # If IP was forced via command line, use that
     if [ -n "$FORCE_IP" ]; then
         detected_ip="$FORCE_IP"
-        print_info "Using forced IP: $detected_ip"
+        print_info "Using forced IP: $detected_ip" >&2
         echo "$detected_ip"
         return 0
     fi
-    
+
     # Method 1: Try hostname -I (most reliable on Linux)
     if command -v hostname >/dev/null 2>&1; then
         detected_ip=$(hostname -I 2>/dev/null | awk '{print $1}')
         if [ -n "$detected_ip" ] && [ "$detected_ip" != "127.0.0.1" ]; then
-            [ "$VERBOSE" = true ] && print_info "IP detected via hostname: $detected_ip"
+            [ "$VERBOSE" = true ] && print_info "IP detected via hostname: $detected_ip" >&2
             echo "$detected_ip"
             return 0
         fi
     fi
-    
+
     # Method 2: Try ip command
     if command -v ip >/dev/null 2>&1; then
         detected_ip=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '127.0.0.1' | head -1)
         if [ -n "$detected_ip" ]; then
-            [ "$VERBOSE" = true ] && print_info "IP detected via ip command: $detected_ip"
+            [ "$VERBOSE" = true ] && print_info "IP detected via ip command: $detected_ip" >&2
             echo "$detected_ip"
             return 0
         fi
     fi
-    
+
     # Method 3: Try to get from default route
     if command -v ip >/dev/null 2>&1; then
         detected_ip=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7; exit}')
         if [ -n "$detected_ip" ] && [ "$detected_ip" != "127.0.0.1" ]; then
-            [ "$VERBOSE" = true ] && print_info "IP detected via route: $detected_ip"
+            [ "$VERBOSE" = true ] && print_info "IP detected via route: $detected_ip" >&2
             echo "$detected_ip"
             return 0
         fi
     fi
-    
+
     # Default to localhost if nothing else works
-    print_warning "Could not detect machine IP, defaulting to localhost"
+    print_warning "Could not detect machine IP, defaulting to localhost" >&2
     echo "localhost"
 }
 

@@ -103,7 +103,8 @@ services:
 
   # ClamAV - Antivirus
   clamav:
-    image: clamav/clamav:latest
+    image: clamav/clamav:stable
+    platform: linux/amd64
     container_name: legal-ai-clamav
     ports:
       - "${CLAMAV_PORT}:3310"

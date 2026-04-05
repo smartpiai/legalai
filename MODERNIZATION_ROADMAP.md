@@ -215,36 +215,40 @@ outputs use the SDK's native Pydantic support (no Instructor needed).
 | `3.1.1` | Add `claude-agent-sdk` + `anthropic` SDK to `pyproject.toml` | S | Phase 0 |
 | `3.1.2` | Create `backend/app/agents/base.py`: base agent config (model, system prompt, token budget, tenant context) | M | 3.1.1 |
 | `3.1.3` | Create `backend/app/agents/tools/` package: `@tool` decorator wrapper that adds tenant isolation + audit logging to every tool call | M | 3.1.2 |
-| `3.1.4` | Create `backend/app/agents/state.py`: agent state persistence to Redis (conversation history, intermediate results, cost tracking) | M | 3.1.2 |
+| `3.1.4` | Create `backend/app/agents/state.py`: agent state persistence to PostgreSQL (conversation history, intermediate results, cost tracking) with Redis as hot cache for active sessions | M | 3.1.2 |
 | `3.1.5` | Config: `ANTHROPIC_API_KEY`, `AGENT_MODEL=claude-sonnet-4-6`, `AGENT_MAX_TOKENS`, `AGENT_COST_LIMIT_PER_REQUEST` env vars | S | 3.1.2 |
-| `3.1.6` | Add `POST /api/v1/agents/invoke` generic endpoint: accepts agent_type + input, returns structured result | M | 3.1.2 |
+| `3.1.6` | Add `POST /api/v1/agents/invoke` generic endpoint: accepts agent_type + input + jurisdiction, returns structured result | M | 3.1.2 |
 | `3.1.7` | Add WebSocket endpoint `WS /api/v1/agents/stream` for streaming agent responses to frontend | M | 3.1.6 |
-| `3.1.8` | Tests: agent initialization, tool registration, state persistence, cost tracking | M | 3.1.4 |
+| `3.1.8` | Create `backend/app/agents/jurisdiction.py`: `JurisdictionRegistry` that loads jurisdiction configs (YAML) and provides `JurisdictionContext` for agent prompt injection | M | 3.1.2 |
+| `3.1.9` | Create `backend/app/agents/jurisdiction_configs/` with initial configs: `FR.yaml`, `EG.yaml`, `GB.yaml` — each defines legal_system, language, clause_rules, agent_context addendum, risk_framework | M | 3.1.8 |
+| `3.1.10` | Jurisdiction-aware agent base: `base.py` accepts `JurisdictionContext`, injects jurisdiction-specific system prompt addendum + clause library + risk framework into every agent invocation | M | 3.1.8 |
+| `3.1.11` | Tests: agent initialization, tool registration, state persistence, cost tracking, jurisdiction context injection | M | 3.1.4, 3.1.10 |
 
 ### 3.2 — Agent Tool Library (wrapping existing services)
 | PR | Description | Size | Depends On |
 |----|-------------|------|------------|
-| `3.2.1` | Tool: `search_contracts(query, filters)` — wraps existing `search.py` service | S | 3.1.3 |
+| `3.2.1` | Tool: `search_contracts(query, filters, jurisdiction)` — wraps existing `search.py` service, filters by jurisdiction when provided | S | 3.1.3 |
 | `3.2.2` | Tool: `query_graph(cypher)` — wraps existing `graph_data.py` Neo4j queries | S | 3.1.3 |
 | `3.2.3` | Tool: `get_embeddings(text)` — wraps existing `embedding.py` (provider-agnostic) | S | 3.1.3 |
 | `3.2.4` | Tool: `extract_entities(text)` — wraps existing `extraction.py` spaCy/NER pipeline | S | 3.1.3 |
-| `3.2.5` | Tool: `score_risk(clause_text, clause_type)` — wraps existing risk assessment service | S | 3.1.3 |
-| `3.2.6` | Tool: `get_similar_clauses(clause_text, top_k)` — wraps Qdrant similarity search | S | 3.1.3 |
+| `3.2.5` | Tool: `score_risk(clause_text, clause_type, jurisdiction)` — wraps risk assessment service, applies jurisdiction-specific risk framework | S | 3.1.3, 3.1.10 |
+| `3.2.6` | Tool: `get_similar_clauses(clause_text, top_k, jurisdiction)` — wraps Qdrant similarity search, scoped to jurisdiction corpus | S | 3.1.3 |
 | `3.2.7` | Tool: `get_contract_history(contract_id)` — wraps audit trail + version history | S | 3.1.3 |
 | `3.2.8` | Tool: `store_extraction_result(contract_id, data)` — writes structured results to PostgreSQL | S | 3.1.3 |
-| `3.2.9` | Integration test: agent calls each tool, verifies round-trip through real services | M | 3.2.1–3.2.8 |
+| `3.2.9` | Tool: `get_jurisdiction_context(jurisdiction_code)` — returns clause rules, legal references, and risk indicators for a jurisdiction | S | 3.1.8 |
+| `3.2.10` | Integration test: agent calls each tool, verifies round-trip through real services including jurisdiction-scoped queries | M | 3.2.1–3.2.9 |
 
 ### 3.3 — Specialized Agents
 | PR | Description | Size | Depends On |
 |----|-------------|------|------------|
-| `3.3.1` | `ExtractionAgent`: system prompt + tools for contract data extraction, outputs `ContractExtraction` Pydantic model | M | 3.2.1–3.2.8 |
-| `3.3.2` | `AnalysisAgent`: system prompt + tools for risk analysis, clause review, outputs `ContractAnalysis` model | M | 3.2.1–3.2.8 |
-| `3.3.3` | `ComplianceAgent`: system prompt + tools for regulatory checks, outputs `ComplianceReport` model | M | 3.2.1–3.2.8 |
-| `3.3.4` | `NegotiationAgent`: system prompt + tools for term comparison and counter-proposal generation | M | 3.2.1–3.2.8 |
-| `3.3.5` | `ReviewAgent`: system prompt + tools for redline comparison, amendment analysis | M | 3.2.1–3.2.8 |
-| `3.3.6` | Pydantic output schemas for each agent: `ContractExtraction`, `ContractAnalysis`, `ComplianceReport`, `NegotiationProposal`, `ReviewSummary` | M | 3.3.1 |
-| `3.3.7` | `AgentOrchestrator`: routes incoming requests to the right agent, chains agents for multi-step workflows | M | 3.3.1–3.3.5 |
-| `3.3.8` | Tests: each agent with sample contracts, verify structured output, verify tool call sequences | M | 3.3.1–3.3.5 |
+| `3.3.1` | `ExtractionAgent`: system prompt + tools for contract data extraction, outputs `ContractExtraction` Pydantic model. Accepts `JurisdictionContext` to adapt extraction to jurisdiction-specific clause structures | M | 3.2.1–3.2.10 |
+| `3.3.2` | `AnalysisAgent`: system prompt + tools for risk analysis, clause review, outputs `ContractAnalysis` model. Uses jurisdiction risk framework for scoring | M | 3.2.1–3.2.10 |
+| `3.3.3` | `ComplianceAgent`: system prompt + tools for regulatory checks, outputs `ComplianceReport` model. Loads jurisdiction-specific regulatory references (e.g., Code Civil, Egyptian Civil Code, English common law precedents) | M | 3.2.1–3.2.10 |
+| `3.3.4` | `NegotiationAgent`: system prompt + tools for term comparison and counter-proposal generation. Benchmarks against jurisdiction-specific market standards | M | 3.2.1–3.2.10 |
+| `3.3.5` | `ReviewAgent`: system prompt + tools for redline comparison, amendment analysis | M | 3.2.1–3.2.10 |
+| `3.3.6` | Pydantic output schemas for each agent: `ContractExtraction`, `ContractAnalysis`, `ComplianceReport`, `NegotiationProposal`, `ReviewSummary` — all include `jurisdiction` and `legal_system` fields | M | 3.3.1 |
+| `3.3.7` | `AgentOrchestrator`: routes incoming requests to the right agent, resolves jurisdiction from contract metadata, injects `JurisdictionContext`, chains agents for multi-step workflows | M | 3.3.1–3.3.5 |
+| `3.3.8` | Tests: each agent with sample contracts across jurisdictions (FR civil law, EG mixed, GB common law), verify structured output adapts to jurisdiction, verify tool call sequences | M | 3.3.1–3.3.5 |
 
 ### 3.4 — LangChain Slim-Down (0.1 → core-only 0.3)
 | PR | Description | Size | Depends On |
@@ -373,31 +377,42 @@ outputs use the SDK's native Pydantic support (no Instructor needed).
 
 > Build the legal knowledge layer. Depends on the AI/ML stack from Phase 3.
 
-### 5.1 — Open Legal Data Ingestion
+### 5.1 — Multi-Jurisdiction Legal Data Ingestion
+
+> Legal corpus ingestion must support multiple jurisdictions from day one. Each data source
+> is a pluggable adapter behind a common `CorpusProvider` interface. Tenants configure which
+> jurisdictions they need — the platform loads the corresponding adapters and corpora.
+
 | PR | Description | Size | Depends On |
 |----|-------------|------|------------|
-| `5.1.1` | Research: identify best open legal data sources (Caselaw Access Project, CourtListener, open regulatory APIs) — document in ADR | S | — |
-| `5.1.2` | Create `LegalCorpusIngester` service: fetch, normalize, chunk legal texts | M | 5.1.1 |
-| `5.1.3` | Qdrant: create `legal_corpus` collection (separate from tenant data) | S | 5.1.2 |
-| `5.1.4` | Neo4j: create `case_law` subgraph schema (Case → cites → Case, Case → interprets → Statute) | M | 5.1.2 |
-| `5.1.5` | Ingestion pipeline: bulk load initial dataset (start with 10K cases for validation) | M | 5.1.3, 5.1.4 |
-| `5.1.6` | Incremental sync: scheduled job to pull new cases/rulings | S | 5.1.5 |
+| `5.1.1` | Research: identify best open legal data sources per jurisdiction — document in ADR-005. **Anglo-Saxon**: Caselaw Access Project, CourtListener, BAILII (UK). **French**: Légifrance API, EUR-Lex. **Egyptian**: Egyptian Gazette, Cassation Court databases. Also identify practice-area-specific sources (FIDIC for construction, energy regulatory bodies, sports arbitration — CAS) | M | — |
+| `5.1.2` | Define `CorpusProvider` protocol: `search(query, filters) → list[LegalDocument]`, `fetch(document_id) → LegalDocument`, `sync(since) → SyncResult`. All adapters implement this interface | S | 5.1.1 |
+| `5.1.3` | Create `CorpusRegistry`: registers available providers per jurisdiction, resolves which adapters to query based on tenant's configured jurisdictions | S | 5.1.2 |
+| `5.1.4` | Adapter: `CourtListenerProvider` (US common law — case law, opinions) | M | 5.1.2 |
+| `5.1.5` | Adapter: `BAILIIProvider` (UK/Commonwealth common law — case law, legislation) | M | 5.1.2 |
+| `5.1.6` | Adapter: `LegifranceProvider` (French civil law — codes, jurisprudence, legislation via open API) | M | 5.1.2 |
+| `5.1.7` | Adapter: `EgyptianCorpusProvider` (Egyptian mixed law — civil code, cassation court rulings). Note: may require manual corpus building or partnership if open APIs are limited | M | 5.1.2 |
+| `5.1.8` | Qdrant: create `legal_corpus` collection with `jurisdiction` payload field for filtered search (separate from tenant data) | S | 5.1.4 |
+| `5.1.9` | Neo4j: create `case_law` subgraph schema (Case → cites → Case, Case → interprets → Statute, Statute → belongs_to → Jurisdiction). Add `jurisdiction` and `legal_system` properties to all nodes | M | 5.1.4 |
+| `5.1.10` | Ingestion pipeline: bulk load initial datasets per jurisdiction (start with 5K cases per active jurisdiction for validation) | M | 5.1.8, 5.1.9 |
+| `5.1.11` | Incremental sync: scheduled job to pull new cases/rulings from each active adapter | S | 5.1.10 |
+| `5.1.12` | Admin API: `GET/POST /api/v1/admin/jurisdictions` — tenant admins enable/disable jurisdictions, configure preferred corpus sources | S | 5.1.3 |
 
 ### 5.2 — Knowledge-Enriched RAG
 | PR | Description | Size | Depends On |
 |----|-------------|------|------------|
-| `5.2.1` | Multi-collection retrieval: query tenant contracts AND legal corpus in parallel | M | 5.1.5, 3.2.4 |
-| `5.2.2` | Source attribution: label each retrieved chunk as "internal" or "legal_corpus" | S | 5.2.1 |
-| `5.2.3` | Legal context injection: when analyzing a clause, retrieve relevant case law interpretations | M | 5.2.1 |
-| `5.2.4` | Risk scoring enrichment: ground risk scores in actual litigation outcomes | M | 5.2.3 |
+| `5.2.1` | Multi-collection retrieval: query tenant contracts AND legal corpus in parallel, filtered by contract's jurisdiction(s) via `CorpusRegistry` | M | 5.1.10, 3.2.4 |
+| `5.2.2` | Source attribution: label each retrieved chunk as "internal", "legal_corpus", or "cross_jurisdiction" with jurisdiction tag and legal system type | S | 5.2.1 |
+| `5.2.3` | Legal context injection: when analyzing a clause, retrieve relevant case law interpretations from the matching jurisdiction. For mixed-jurisdiction contracts, retrieve from all applicable jurisdictions and flag conflicts | M | 5.2.1 |
+| `5.2.4` | Risk scoring enrichment: ground risk scores in actual litigation outcomes, segmented by jurisdiction (e.g., force majeure enforceability differs between FR Art. 1218 and English common law) | M | 5.2.3 |
 
 ### 5.3 — Clause Benchmarking
 | PR | Description | Size | Depends On |
 |----|-------------|------|------------|
-| `5.3.1` | Extract common clause patterns from legal corpus (indemnification, limitation of liability, force majeure) | M | 5.1.5 |
-| `5.3.2` | Build clause similarity index: compare tenant clauses against corpus benchmarks | M | 5.3.1 |
-| `5.3.3` | API endpoint: `POST /api/v1/clauses/{id}/benchmark` → returns market comparison | S | 5.3.2 |
-| `5.3.4` | Frontend: clause benchmark widget showing how a clause compares to market standard | M | 5.3.3 |
+| `5.3.1` | Extract common clause patterns from legal corpus per jurisdiction and practice area (indemnification, limitation of liability, force majeure, penalty clauses) | M | 5.1.10 |
+| `5.3.2` | Build clause similarity index: compare tenant clauses against corpus benchmarks, segmented by jurisdiction + practice area (e.g., "French construction force majeure" vs "English energy limitation of liability") | M | 5.3.1 |
+| `5.3.3` | API endpoint: `POST /api/v1/clauses/{id}/benchmark` → returns market comparison within the clause's jurisdiction and practice area context | S | 5.3.2 |
+| `5.3.4` | Frontend: clause benchmark widget showing how a clause compares to market standard, with jurisdiction selector to compare across legal systems | M | 5.3.3 |
 
 ### 5.4 — AI Evaluation Harness
 | PR | Description | Size | Depends On |
@@ -418,31 +433,38 @@ outputs use the SDK's native Pydantic support (no Instructor needed).
 | **Phase 0: Stabilization** | 14 | 1-2 | — (must go first) |
 | **Phase 1: Infrastructure** | 16 | 2-3 | Phase 2 (partial) |
 | **Phase 2: Backend** | 21 | 3-4 | Phase 1, Phase 4 |
-| **Phase 3: AI/ML (Agent SDK)** | 52 | 5-7 | Phase 4 |
+| **Phase 3: AI/ML (Agent SDK)** | 58 | 5-8 | Phase 4 |
 | **Phase 4: Frontend** | 26 | 3-4 | Phase 2, Phase 3 |
-| **Phase 5: Data & Integration** | 17 | 3-4 | — (needs Phase 3) |
-| **Total** | **146 PRs** | **~12-14 weeks** | |
+| **Phase 5: Data & Integration** | 23 | 4-5 | — (needs Phase 3) |
+| **Total** | **158 PRs** | **~12-15 weeks** | |
 
 ## Critical Path
 
 ```
-Phase 0 ──→ 3.1 (Agent SDK foundation) ──→ 3.2 (tool library) ──→ 3.3 (specialized agents)
-         │                                                              │
-         │                                                              ├──→ 3.7 (VLM tools) ──→ 5.4 (eval)
-         │                                                              │
-         │  Phase 1.1-1.4 (PG17 + Qdrant) ──→ 3.5 (Gemini embed) ─────┤
-         │                                                              │
-         │                                                              ├──→ 3.6 (hybrid search) ──→ 5.1 (legal corpus)
-         │                                                              │
-         ├──→ Phase 2.1 (deps) ──→ 2.2 (API cleanup) ─────────────────┘
+Phase 0 ──→ 3.1 (Agent SDK + jurisdiction registry) ──→ 3.2 (tool library) ──→ 3.3 (jurisdiction-aware agents)
+         │          │                                                              │
+         │          │                                                              ├──→ 3.7 (VLM tools) ──→ 5.4 (eval)
+         │          │                                                              │
+         │          │  Phase 1.1-1.4 (PG17 + Qdrant) ──→ 3.5 (Gemini embed) ─────┤
+         │          │                                                              │
+         │          │                                                              ├──→ 3.6 (hybrid search) ──→ 5.1 (multi-jurisdiction corpus)
+         │          │                                                              │                                │
+         │          └──→ 3.1.8-10 (jurisdiction configs) ─────────────────────────┘                                │
+         │                                                                                                          │
+         │                                                              5.1.2-7 (corpus adapters: CourtListener,   │
+         │                                                              BAILII, Légifrance, Egyptian) ──────────────┘
+         │
+         ├──→ Phase 2.1 (deps) ──→ 2.2 (API cleanup)
          │
          └──→ Phase 4.1 (toolchain) ──→ 4.2 (React 19) ──→ 4.3 (Tailwind v4) ──→ 4.5 (shadcn)
 ```
 
-**Phase 3 is now the spine of the project.** The Agent SDK foundation (3.1) unblocks
-the tool library (3.2), which unblocks specialized agents (3.3), which unblocks
-VLM integration (3.7) and legacy migration (3.9). Infrastructure (Phase 1) and
-embeddings (3.5) can progress in parallel.
+**Phase 3 is now the spine of the project.** The Agent SDK foundation (3.1) — including
+the jurisdiction registry (3.1.8-10) — unblocks the tool library (3.2), which unblocks
+jurisdiction-aware specialized agents (3.3), which unblocks VLM integration (3.7) and
+legacy migration (3.9). The jurisdiction plugin architecture flows through to Phase 5.1
+where corpus adapters per jurisdiction provide the legal knowledge layer. Infrastructure
+(Phase 1) and embeddings (3.5) can progress in parallel.
 
 ## Decision Records Needed
 
@@ -452,12 +474,13 @@ Before implementation, these architectural decisions need an ADR (Architecture D
 |-----|----------|-------|--------|
 | ADR-001 | Valkey vs Redis 8 | 1.3 | PENDING |
 | ADR-002 | Temporal vs Dramatiq vs keep Celery | 2.4 | PENDING |
-| ADR-003 | TanStack Router vs react-router v7 | 4.4 | PENDING |
+| ~~ADR-003~~ | ~~TanStack Router vs react-router v7~~ | ~~4.4~~ | **DECIDED: TanStack Router** |
 | ~~ADR-004~~ | ~~Primary LLM provider~~ | ~~3.1~~ | **DECIDED: Claude Agent SDK** |
-| ADR-005 | Open legal data source selection | 5.1 | PENDING |
-| ADR-006 | VLM provider default: Claude vision vs Gemini Flash | 3.7 | PENDING |
-| ADR-007 | Agent state persistence: Redis vs PostgreSQL vs hybrid | 3.1 | PENDING |
+| ADR-005 | Multi-jurisdiction legal data source selection (per jurisdiction: Anglo-Saxon, French, Egyptian + practice-area-specific) | 5.1 | PENDING |
+| ~~ADR-006~~ | ~~VLM provider default: Claude vision vs Gemini Flash~~ | ~~3.7~~ | **DECIDED: Claude primary, Gemini Flash fallback** |
+| ~~ADR-007~~ | ~~Agent state persistence: Redis vs PostgreSQL vs hybrid~~ | ~~3.1~~ | **DECIDED: PostgreSQL primary, Redis hot cache** |
 | ADR-008 | Legacy `app/ai/` migration strategy: rewrite vs extract vs deprecate | 3.9 | PENDING |
+| ADR-009 | Jurisdiction plugin architecture: config schema, corpus adapter interface, tenant jurisdiction management | 3.1, 5.1 | PENDING |
 
 ---
 

@@ -12,7 +12,7 @@
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent"
 import { Type } from "@sinclair/typebox"
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
+import { readFileSync, readdirSync, writeFileSync, existsSync, mkdirSync } from "fs"
 import { join } from "path"
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml"
 
@@ -111,7 +111,7 @@ export default function (pi: ExtensionAPI) {
 		name: "dispatch",
 		description:
 			"Dispatch work to an agent chain, team, or individual agent. Used by orchestrator agents to coordinate multi-agent workflows. Returns a description of what would be invoked — the orchestrator then communicates this plan to the user.",
-		schema: Type.Object({
+		parameters: Type.Object({
 			type: Type.String({
 				description: 'What to invoke: "chain", "team", or "agent"',
 				enum: ["chain", "team", "agent"],
@@ -129,81 +129,84 @@ export default function (pi: ExtensionAPI) {
 			),
 		}),
 		execute: async (
-			input: { type: string; target: string; input: string; skill?: string },
-			ctx: any
+			_toolCallId: string,
+			params: { type: string; target: string; input: string; skill?: string },
+			_signal: AbortSignal,
+			_onUpdate: any,
+			_ctx: any
 		) => {
-			const cwd = ctx.cwd ?? process.cwd()
+			const cwd = _ctx.cwd ?? process.cwd()
 
 			// Read the composition definitions
-			if (input.type === "chain") {
+			if (params.type === "chain") {
 				const chainsPath = join(cwd, ".pi", "agents", "chains.yaml")
 				if (!existsSync(chainsPath)) {
-					return { content: "Error: chains.yaml not found" }
+					return { content: [{ type: "text", text: "Error: chains.yaml not found" }] }
 				}
 				const chains = parseYaml(readFileSync(chainsPath, "utf-8")) as Record<string, any[]>
-				const chain = chains[input.target]
+				const chain = chains[params.target]
 				if (!chain) {
 					return {
-						content: `Error: chain "${input.target}" not found. Available: ${Object.keys(chains).join(", ")}`,
+						content: [{ type: "text", text: `Error: chain "${params.target}" not found. Available: ${Object.keys(chains).join(", ")}` }],
 					}
 				}
 
 				const steps = chain.map((step: any, i: number) => `  Step ${i + 1}: ${step.agent}`).join("\n")
 				return {
-					content: [
-						`## Dispatch: Chain "${input.target}"`,
+					content: [{ type: "text", text: [
+						`## Dispatch: Chain "${params.target}"`,
 						"",
 						`**Steps:**`,
 						steps,
 						"",
-						`**Input:** ${input.input.substring(0, 200)}...`,
+						`**Input:** ${params.input.substring(0, 200)}...`,
 						"",
 						`To execute this chain, invoke each agent in sequence, passing the output of each step as $INPUT to the next.`,
 						`The chain definition in .pi/agents/chains.yaml contains the exact prompts for each step.`,
-					].join("\n"),
+					].join("\n") }],
 				}
 			}
 
-			if (input.type === "team") {
+			if (params.type === "team") {
 				const teamsPath = join(cwd, ".pi", "agents", "teams.yaml")
 				if (!existsSync(teamsPath)) {
-					return { content: "Error: teams.yaml not found" }
+					return { content: [{ type: "text", text: "Error: teams.yaml not found" }] }
 				}
 				const teams = parseYaml(readFileSync(teamsPath, "utf-8")) as Record<string, string[]>
-				const team = teams[input.target]
+				const team = teams[params.target]
 				if (!team) {
 					return {
-						content: `Error: team "${input.target}" not found. Available: ${Object.keys(teams).join(", ")}`,
+						content: [{ type: "text", text: `Error: team "${params.target}" not found. Available: ${Object.keys(teams).join(", ")}` }],
 					}
 				}
 
 				return {
-					content: [
-						`## Dispatch: Team "${input.target}"`,
+					content: [{ type: "text", text: [
+						`## Dispatch: Team "${params.target}"`,
 						"",
 						`**Agents (parallel):** ${team.join(", ")}`,
 						"",
-						`**Input:** ${input.input.substring(0, 200)}...`,
+						`**Input:** ${params.input.substring(0, 200)}...`,
 						"",
 						`To execute this team, invoke all agents simultaneously with the same input and collect their outputs.`,
-					].join("\n"),
+					].join("\n") }],
 				}
 			}
 
-			if (input.type === "agent") {
-				const skillNote = input.skill ? ` with skill "${input.skill}"` : ""
+			if (params.type === "agent") {
+				const skillNote = params.skill ? ` with skill "${params.skill}"` : ""
 				return {
-					content: [
-						`## Dispatch: Agent "${input.target}"${skillNote}`,
+					content: [{ type: "text", text: [
+						`## Dispatch: Agent "${params.target}"${skillNote}`,
 						"",
-						`**Input:** ${input.input.substring(0, 200)}...`,
+						`**Input:** ${params.input.substring(0, 200)}...`,
 						"",
-						`To execute, invoke the ${input.target} agent${skillNote} with the provided input.`,
-					].join("\n"),
+						`To execute, invoke the ${params.target} agent${skillNote} with the provided input.`,
+					].join("\n") }],
 				}
 			}
 
-			return { content: `Error: unknown dispatch type "${input.type}"` }
+			return { content: [{ type: "text", text: `Error: unknown dispatch type "${params.type}"` }] }
 		},
 	})
 
@@ -214,29 +217,35 @@ export default function (pi: ExtensionAPI) {
 		name: "route",
 		description:
 			"Analyze a user request and recommend the best routing (chain, team, or agent) based on the routing rules in .pi/agents/routing.yaml. Returns the matched rule and recommended invocation.",
-		schema: Type.Object({
+		parameters: Type.Object({
 			request: Type.String({ description: "The user's request to route" }),
 		}),
-		execute: async (input: { request: string }, ctx: any) => {
-			const cwd = ctx.cwd ?? process.cwd()
+		execute: async (
+			_toolCallId: string,
+			params: { request: string },
+			_signal: AbortSignal,
+			_onUpdate: any,
+			_ctx: any
+		) => {
+			const cwd = _ctx.cwd ?? process.cwd()
 			const rules = loadRoutingRules(cwd)
 
 			if (rules.length === 0) {
-				return { content: "No routing rules found. Check .pi/agents/routing.yaml" }
+				return { content: [{ type: "text", text: "No routing rules found. Check .pi/agents/routing.yaml" }] }
 			}
 
-			const matched = matchRoute(input.request, rules)
+			const matched = matchRoute(params.request, rules)
 
 			if (!matched) {
 				return {
-					content: `No routing rule matched "${input.request}". Falling back to default agent.`,
+					content: [{ type: "text", text: `No routing rule matched "${params.request}". Falling back to default agent.` }],
 				}
 			}
 
 			const lines = [
 				`## Routing Result`,
 				"",
-				`**Request:** "${input.request}"`,
+				`**Request:** "${params.request}"`,
 				`**Matched rule:** \`${matched.match}\``,
 				`**Route type:** ${matched.route}`,
 				`**Target:** ${matched.target}`,
@@ -278,7 +287,7 @@ export default function (pi: ExtensionAPI) {
 					break
 			}
 
-			return { content: lines.filter(Boolean).join("\n") }
+			return { content: [{ type: "text", text: lines.filter(Boolean).join("\n") }] }
 		},
 	})
 
@@ -289,7 +298,7 @@ export default function (pi: ExtensionAPI) {
 		name: "progress",
 		description:
 			"Read or update the orchestration progress tracker at .pi/state/progress.yaml. Used by orchestrators to track multi-chain execution state.",
-		schema: Type.Object({
+		parameters: Type.Object({
 			action: Type.String({
 				description: '"read" to get current state, "update" to modify it',
 				enum: ["read", "update"],
@@ -307,30 +316,33 @@ export default function (pi: ExtensionAPI) {
 			note: Type.Optional(Type.String({ description: "Note to attach to the update" })),
 		}),
 		execute: async (
-			input: {
+			_toolCallId: string,
+			params: {
 				action: string
 				phase?: string
 				taskId?: string
 				status?: string
 				note?: string
 			},
-			ctx: any
+			_signal: AbortSignal,
+			_onUpdate: any,
+			_ctx: any
 		) => {
-			const cwd = ctx.cwd ?? process.cwd()
+			const cwd = _ctx.cwd ?? process.cwd()
 
-			if (input.action === "read") {
+			if (params.action === "read") {
 				const state = loadProgress(cwd)
 				if (!state) {
 					return {
-						content: "No progress state found. Start an orchestration to create one.",
+						content: [{ type: "text", text: "No progress state found. Start an orchestration to create one." }],
 					}
 				}
-				return { content: stringifyYaml(state) }
+				return { content: [{ type: "text", text: stringifyYaml(state) }] }
 			}
 
-			if (input.action === "update") {
+			if (params.action === "update") {
 				let state = loadProgress(cwd) || {
-					phase: input.phase,
+					phase: params.phase,
 					startedAt: new Date().toISOString(),
 					waves: [],
 					completed: [],
@@ -338,14 +350,14 @@ export default function (pi: ExtensionAPI) {
 					blocked: [],
 				}
 
-				if (input.taskId && input.status) {
+				if (params.taskId && params.status) {
 					// Update task status
 					for (const wave of state.waves) {
 						for (const task of wave.tasks) {
 							const taskKey = `${task.chain}:${task.docType}`
-							if (taskKey === input.taskId) {
-								task.status = input.status as WaveTask["status"]
-								if (input.note) task.output = input.note
+							if (taskKey === params.taskId) {
+								task.status = params.status as WaveTask["status"]
+								if (params.note) task.output = params.note
 							}
 						}
 					}
@@ -363,10 +375,10 @@ export default function (pi: ExtensionAPI) {
 				}
 
 				saveProgress(cwd, state)
-				return { content: `Progress updated.\n\n${stringifyYaml(state)}` }
+				return { content: [{ type: "text", text: `Progress updated.\n\n${stringifyYaml(state)}` }] }
 			}
 
-			return { content: `Unknown action: ${input.action}` }
+			return { content: [{ type: "text", text: `Unknown action: ${params.action}` }] }
 		},
 	})
 
@@ -431,7 +443,7 @@ export default function (pi: ExtensionAPI) {
 	// ── Event bus: inter-agent communication ───────────────────────
 
 	// Agents can publish findings that other agents subscribe to
-	pi.events.on("agent:finding", (data: any) => {
+	pi.on("agent:finding", (data: any) => {
 		// Store findings for cross-agent access
 		const cwd = process.cwd()
 		const findingsDir = join(cwd, ".pi", "state", "findings")
@@ -446,7 +458,7 @@ export default function (pi: ExtensionAPI) {
 		name: "findings",
 		description:
 			"Read findings published by other agents via the event bus. Useful for orchestrators and reviewers to see what previous agents discovered.",
-		schema: Type.Object({
+		parameters: Type.Object({
 			agent: Type.Optional(
 				Type.String({ description: "Filter to findings from a specific agent" })
 			),
@@ -454,21 +466,26 @@ export default function (pi: ExtensionAPI) {
 				Type.String({ description: "Only findings after this ISO timestamp" })
 			),
 		}),
-		execute: async (input: { agent?: string; since?: string }, ctx: any) => {
-			const cwd = ctx.cwd ?? process.cwd()
+		execute: async (
+			_toolCallId: string,
+			params: { agent?: string; since?: string },
+			_signal: AbortSignal,
+			_onUpdate: any,
+			_ctx: any
+		) => {
+			const cwd = _ctx.cwd ?? process.cwd()
 			const findingsDir = join(cwd, ".pi", "state", "findings")
 
 			if (!existsSync(findingsDir)) {
-				return { content: "No findings published yet." }
+				return { content: [{ type: "text", text: "No findings published yet." }] }
 			}
 
-			const files = require("fs")
-				.readdirSync(findingsDir)
+			const files = readdirSync(findingsDir)
 				.filter((f: string) => f.endsWith(".yaml"))
 				.sort()
 
 			if (files.length === 0) {
-				return { content: "No findings published yet." }
+				return { content: [{ type: "text", text: "No findings published yet." }] }
 			}
 
 			let findings = files.map((f: string) => {
@@ -476,12 +493,12 @@ export default function (pi: ExtensionAPI) {
 				return { file: f, ...parseYaml(content) }
 			})
 
-			if (input.agent) {
-				findings = findings.filter((f: any) => f.agent === input.agent)
+			if (params.agent) {
+				findings = findings.filter((f: any) => f.agent === params.agent)
 			}
 
-			if (input.since) {
-				const sinceTime = new Date(input.since).getTime()
+			if (params.since) {
+				const sinceTime = new Date(params.since).getTime()
 				findings = findings.filter((f: any) => {
 					const match = f.file.match(/-(\d+)\.yaml$/)
 					return match && parseInt(match[1]) > sinceTime
@@ -489,11 +506,11 @@ export default function (pi: ExtensionAPI) {
 			}
 
 			if (findings.length === 0) {
-				return { content: "No matching findings." }
+				return { content: [{ type: "text", text: "No matching findings." }] }
 			}
 
 			return {
-				content: findings.map((f: any) => stringifyYaml(f)).join("\n---\n"),
+				content: [{ type: "text", text: findings.map((f: any) => stringifyYaml(f)).join("\n---\n") }],
 			}
 		},
 	})

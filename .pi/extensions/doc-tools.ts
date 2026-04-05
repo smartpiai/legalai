@@ -133,7 +133,7 @@ export default function (pi: ExtensionAPI) {
 		name: "doc_status",
 		description:
 			"Scan docs/ directory and report document inventory. Shows existing documents grouped by phase and type, counts per type, and identifies phases with no documents. Use this to understand the current documentation state.",
-		schema: Type.Object({
+		parameters: Type.Object({
 			phase: Type.Optional(
 				Type.String({
 					description: 'Filter to a specific phase number (e.g., "0", "1", "3"). Omit for all phases.',
@@ -146,19 +146,19 @@ export default function (pi: ExtensionAPI) {
 				})
 			),
 		}),
-		execute: async (input: { phase?: string; type?: string }, ctx: any) => {
-			const cwd = ctx.cwd ?? process.cwd()
+		execute: async (_toolCallId: string, params: { phase?: string; type?: string }, _signal: AbortSignal, _onUpdate: any, _ctx: any) => {
+			const cwd = _ctx.cwd ?? process.cwd()
 			const docs = scanDocs(cwd)
-			const filtered = findDocsByPhaseAndType(docs, input.phase, input.type)
+			const filtered = findDocsByPhaseAndType(docs, params.phase, params.type)
 
 			if (filtered.length === 0) {
-				const scope = [input.phase && `phase ${input.phase}`, input.type && `type "${input.type}"`]
+				const scope = [params.phase && `phase ${params.phase}`, params.type && `type "${params.type}"`]
 					.filter(Boolean)
 					.join(", ")
 				return {
-					content: scope
+					content: [{ type: "text", text: scope
 						? `No documents found for ${scope}. The docs/ directory may not have phase subdirectories yet, or no documents match the filter.`
-						: "No documents found in docs/. Phase directories (e.g., docs/phase-0/) may not exist yet.",
+						: "No documents found in docs/. Phase directories (e.g., docs/phase-0/) may not exist yet." }],
 				}
 			}
 
@@ -200,7 +200,7 @@ export default function (pi: ExtensionAPI) {
 			}
 			lines.push("", `**Total**: ${filtered.length} documents`)
 
-			return { content: lines.join("\n") }
+			return { content: [{ type: "text", text: lines.join("\n") }] }
 		},
 	})
 
@@ -210,7 +210,7 @@ export default function (pi: ExtensionAPI) {
 		name: "doc_validate",
 		description:
 			"Validate document cross-references and upstream dependencies. Checks that Related Documents links resolve, upstream dependencies exist for each doc type, and naming conventions are followed.",
-		schema: Type.Object({
+		parameters: Type.Object({
 			path: Type.Optional(
 				Type.String({
 					description:
@@ -218,18 +218,18 @@ export default function (pi: ExtensionAPI) {
 				})
 			),
 		}),
-		execute: async (input: { path?: string }, ctx: any) => {
-			const cwd = ctx.cwd ?? process.cwd()
+		execute: async (_toolCallId: string, params: { path?: string }, _signal: AbortSignal, _onUpdate: any, _ctx: any) => {
+			const cwd = _ctx.cwd ?? process.cwd()
 			const docs = scanDocs(cwd)
 			const issues: string[] = []
 
-			const toValidate = input.path ? docs.filter((d) => d.path === input.path) : docs
+			const toValidate = params.path ? docs.filter((d) => d.path === params.path) : docs
 
 			if (toValidate.length === 0) {
 				return {
-					content: input.path
-						? `Document not found at ${input.path}. Run doc_status to see existing documents.`
-						: "No documents found to validate.",
+					content: [{ type: "text", text: params.path
+						? `Document not found at ${params.path}. Run doc_status to see existing documents.`
+						: "No documents found to validate." }],
 				}
 			}
 
@@ -264,18 +264,18 @@ export default function (pi: ExtensionAPI) {
 
 			if (issues.length === 0) {
 				return {
-					content: `Validated ${toValidate.length} document(s). No issues found. All upstream dependencies present and cross-references resolve.`,
+					content: [{ type: "text", text: `Validated ${toValidate.length} document(s). No issues found. All upstream dependencies present and cross-references resolve.` }],
 				}
 			}
 
 			return {
-				content: [
+				content: [{ type: "text", text: [
 					`## Validation Issues (${issues.length})`,
 					"",
 					...issues.map((issue, i) => `${i + 1}. ${issue}`),
 					"",
 					`Validated ${toValidate.length} document(s), found ${issues.length} issue(s).`,
-				].join("\n"),
+				].join("\n") }],
 			}
 		},
 	})
@@ -286,7 +286,7 @@ export default function (pi: ExtensionAPI) {
 		name: "doc_gate_check",
 		description:
 			"Check approval gate readiness for a specific phase. Reports which required documents exist, which are missing, and whether the gate can be passed. Consult the Document Matrix for required documents per phase.",
-		schema: Type.Object({
+		parameters: Type.Object({
 			phase: Type.String({ description: 'Phase number to check (e.g., "0", "1", "3")' }),
 			gate: Type.Optional(
 				Type.String({
@@ -296,10 +296,10 @@ export default function (pi: ExtensionAPI) {
 				})
 			),
 		}),
-		execute: async (input: { phase: string; gate?: string }, ctx: any) => {
-			const cwd = ctx.cwd ?? process.cwd()
+		execute: async (_toolCallId: string, params: { phase: string; gate?: string }, _signal: AbortSignal, _onUpdate: any, _ctx: any) => {
+			const cwd = _ctx.cwd ?? process.cwd()
 			const docs = scanDocs(cwd)
-			const phaseDocs = docs.filter((d) => d.phase === input.phase)
+			const phaseDocs = docs.filter((d) => d.phase === params.phase)
 
 			const gates = [
 				{
@@ -331,8 +331,8 @@ export default function (pi: ExtensionAPI) {
 				},
 			]
 
-			const toCheck = input.gate ? gates.filter((g) => g.name === input.gate) : gates
-			const lines: string[] = [`## Gate Check: Phase ${input.phase}`, ""]
+			const toCheck = params.gate ? gates.filter((g) => g.name === params.gate) : gates
+			const lines: string[] = [`## Gate Check: Phase ${params.phase}`, ""]
 
 			for (const gate of toCheck) {
 				const requiredPresent = gate.required.filter((t) => phaseDocs.some((d) => d.type === t))
@@ -378,7 +378,7 @@ export default function (pi: ExtensionAPI) {
 				}
 			}
 
-			return { content: lines.join("\n") }
+			return { content: [{ type: "text", text: lines.join("\n") }] }
 		},
 	})
 

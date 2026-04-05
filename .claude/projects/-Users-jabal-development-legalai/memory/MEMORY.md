@@ -1,2 +1,0 @@
-- [User Role](user_role.md) — Enterprise Legal AI builder, architectural thinker, interested in modern AI
-- [Modernization Roadmap](project_modernization.md) — 5-phase, 124-PR modernization plan started 2026-03-31

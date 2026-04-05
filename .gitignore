@@ -1,6 +1,9 @@
 # Legal AI Platform - Comprehensive .gitignore
 # ================================================
 
+# Claude Code user-specific memory
+.claude/
+
 # ===========================
 # Python & Backend
 # ===========================

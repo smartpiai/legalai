@@ -187,6 +187,7 @@ export default function (pi: ExtensionAPI) {
 			}
 
 			activeRole = role
+			pi.events.emit("role:changed", { role: role.name, label: role.label })
 			pi.sendUserMessage(
 				`Role set to **${role.label}**.\n\n` +
 					`You typically author: ${role.authorOf.join(", ")}\n` +

@@ -1,0 +1,171 @@
+id: 1
+name: Phase 0 Foundation Docs
+goal: Complete all required documentation for Phase 0 (Infrastructure &
+  Environment Setup) to pass kickoff and design gates
+startDate: 2026-04-05
+endDate: 2026-04-19
+roadmapPhases:
+  - "0"
+status: active
+backlog:
+  - id: S1-001
+    title: Create Phase 0 BRD
+    type: doc
+    docType: brd
+    phase: "0"
+    assignee: pm
+    chain: create-brd
+    gate: kickoff
+    status: done
+    priority: p0
+    dependsOn: []
+    completedAt: 2026-04-05T22:25:06.605Z
+    output: "BRD created via chain create-brd. Grade: A-. Output:
+      docs/phase-0/0.0_brd_stabilization.md"
+  - id: S1-002
+    title: Create Phase 0 PRD
+    type: doc
+    docType: prd
+    phase: "0"
+    assignee: pm
+    gate: kickoff
+    status: done
+    priority: p1
+    dependsOn:
+      - S1-001
+    completedAt: 2026-04-05T22:31:48.398Z
+    output: "PRD created: docs/phase-0/0.0_prd_stabilization.md. 15 FRs, 8 NFRs, 7
+      user stories."
+  - id: S1-003
+    title: Create Phase 0 ADR
+    type: doc
+    docType: adr
+    phase: "0"
+    assignee: tech-lead
+    gate: kickoff
+    status: done
+    priority: p1
+    dependsOn:
+      - S1-001
+    completedAt: 2026-04-05T22:31:48.401Z
+    output: "ADR created: docs/phase-0/0.0_adr_multi-database-infrastructure.md.
+      Decision: Continue multi-database + Docker Compose."
+  - id: S1-004
+    title: Create Phase 0 Tech Spec
+    type: doc
+    docType: tech-spec
+    phase: "0"
+    assignee: tech-lead
+    chain: create-tech-spec
+    gate: design
+    status: done
+    priority: p1
+    dependsOn:
+      - S1-002
+    completedAt: 2026-04-05T22:40:57.039Z
+    output: "Tech Spec created via chain create-tech-spec. Grade: A-. Output:
+      docs/phase-0/0.0_tech-spec_stabilization.md. 15/15 sections, 14-step
+      rollout plan."
+  - id: S1-005
+    title: Create Phase 0 ID Spec
+    type: doc
+    docType: id-spec
+    phase: "0"
+    assignee: tech-lead
+    gate: pre-merge
+    status: done
+    priority: p2
+    dependsOn:
+      - S1-004
+    completedAt: 2026-04-05T22:53:32.799Z
+    output: "ID Spec created:
+      docs/phase-0/0.0_id-spec_ci-infrastructure-interfaces.md. CI workflow
+      contracts, Docker port map, healthcheck audit, baseline JSON schema."
+  - id: S1-006
+    title: Create Phase 0 Test Spec
+    type: doc
+    docType: test-spec
+    phase: "0"
+    assignee: qa
+    gate: pre-merge
+    status: done
+    priority: p2
+    dependsOn:
+      - S1-004
+    completedAt: 2026-04-05T22:53:32.802Z
+    output: "Test Spec created: docs/phase-0/0.0_test-spec_stabilization.md. 58 test
+      cases, all 15 FRs mapped, flaky test policy defined."
+  - id: S1-007
+    title: Create Phase 0 Sec Review
+    type: doc
+    docType: sec-review
+    phase: "0"
+    assignee: security
+    chain: create-sec-review
+    gate: pre-merge
+    status: done
+    priority: p2
+    dependsOn:
+      - S1-004
+    completedAt: 2026-04-05T22:53:32.805Z
+    output: "Sec Review created via chain create-sec-review:
+      docs/phase-0/0.2.2_sec-review_dependency-audit.md. Grade: A-. 18 findings
+      (1 critical, 2 high). Codebase-grounded with line numbers."
+  - id: S1-008
+    title: Create Phase 0 Dep Review
+    type: doc
+    docType: dep-review
+    phase: "0"
+    assignee: engineer
+    gate: pre-merge
+    status: done
+    priority: p2
+    dependsOn: []
+    completedAt: 2026-04-05T22:28:20.039Z
+    output: "Dep Review created: docs/phase-0/0.2_dep-review_infrastructure-deps.md.
+      Decision: Approved with Conditions (4 security findings, 3 license
+      conditionals)"
+  - id: S1-009
+    title: Create Phase 0 Mig Guide
+    type: doc
+    docType: mig-guide
+    phase: "0"
+    assignee: sre
+    gate: pre-deploy
+    status: done
+    priority: p2
+    dependsOn:
+      - S1-004
+    completedAt: 2026-04-05T22:53:32.807Z
+    output: "Mig Guide created: docs/phase-0/0.0_mig-guide_infrastructure-setup.md.
+      17 steps across 2 weeks, 3 workstreams, granular rollback per PR."
+  - id: S1-010
+    title: Create Phase 0 Runbook
+    type: doc
+    docType: runbook
+    phase: "0"
+    assignee: sre
+    gate: pre-deploy
+    status: done
+    priority: p2
+    dependsOn:
+      - S1-004
+      - S1-009
+    completedAt: 2026-04-05T22:58:42.958Z
+    output: "Runbook created: docs/phase-0/0.0_runbook_infrastructure-operations.md.
+      970 lines, 14 troubleshooting issues, 4-tier escalation, quick reference
+      card."
+  - id: S1-011
+    title: Create Phase 0 Perf Spec
+    type: doc
+    docType: perf-spec
+    phase: "0"
+    assignee: sre
+    gate: pre-deploy
+    status: done
+    priority: p2
+    dependsOn:
+      - S1-004
+    completedAt: 2026-04-05T22:53:32.809Z
+    output: "Perf Spec created: docs/phase-0/0.0_perf-spec_baseline-metrics.md. CI <
+      10 min target, Docker Compose < 45s, dev memory < 4 GB."

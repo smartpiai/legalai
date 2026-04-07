@@ -5,7 +5,7 @@
  *   - `/orchestrate` command: invoke the project orchestrator
  *   - `/phase` command: invoke the phase orchestrator for a specific phase
  *   - `/route` command: manually route a request through routing.yaml
- *   - `dispatch` tool: programmatic chain/team invocation from orchestrator agents
+ *   - `dispatch` tool: real sub-agent spawning with chain/team/agent execution
  *   - Event bus channels for inter-agent state passing
  *   - Progress tracking via .pi/state/progress.yaml
  */
@@ -14,6 +14,8 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent"
 import { Type } from "@sinclair/typebox"
 import { readFileSync, readdirSync, writeFileSync, existsSync, mkdirSync } from "fs"
 import { join } from "path"
+import { homedir } from "os"
+import { spawn, type ChildProcess } from "child_process"
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml"
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -53,6 +55,32 @@ interface BlockedItem {
 	docType: string
 	reason: string
 	blockedBy: string[]
+}
+
+interface ChainStep {
+	agent: string
+	prompt: string
+}
+
+interface AgentFrontmatter {
+	name: string
+	description: string
+	tools: string[]
+	body: string
+}
+
+interface SpawnResult {
+	output: string
+	toolCount: number
+	elapsed: number
+}
+
+interface AgentState {
+	name: string
+	status: "pending" | "running" | "completed" | "failed"
+	elapsed: number
+	toolCount: number
+	lastOutput: string
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -101,16 +129,182 @@ function saveProgress(cwd: string, state: ProgressState): void {
 	writeFileSync(getStatePath(cwd), stringifyYaml(state), "utf-8")
 }
 
+function ensureSessionDir(cwd: string): string {
+	const dir = join(cwd, ".pi", "state", "sessions")
+	if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+	return dir
+}
+
+// ── Agent resolution ──────────────────────────────────────────────
+
+function resolveAgentPath(cwd: string, agentName: string): string | null {
+	const searchDirs = [
+		join(cwd, ".pi", "agents", "roles"),
+		join(cwd, ".pi", "agents", "tasks"),
+		join(cwd, ".pi", "agents", "orchestrators"),
+	]
+	for (const dir of searchDirs) {
+		const path = join(dir, `${agentName}.md`)
+		if (existsSync(path)) return path
+	}
+	return null
+}
+
+function parseAgentFrontmatter(cwd: string, agentName: string): AgentFrontmatter | null {
+	const agentPath = resolveAgentPath(cwd, agentName)
+	if (!agentPath) return null
+
+	try {
+		const raw = readFileSync(agentPath, "utf-8")
+		const match = raw.match(/^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/)
+		if (!match) return { name: agentName, description: "", tools: [], body: raw }
+
+		const fields: Record<string, string> = {}
+		for (const line of match[1].split("\n")) {
+			const idx = line.indexOf(":")
+			if (idx > 0) fields[line.slice(0, idx).trim()] = line.slice(idx + 1).trim()
+		}
+
+		return {
+			name: fields.name || agentName,
+			description: fields.description || "",
+			tools: fields.tools ? fields.tools.split(",").map((t) => t.trim()).filter(Boolean) : [],
+			body: match[2],
+		}
+	} catch {
+		return null
+	}
+}
+
+function buildPrompt(template: string, vars: { $ORIGINAL: string; $INPUT: string }): string {
+	return template.replace(/\$ORIGINAL/g, vars.$ORIGINAL).replace(/\$INPUT/g, vars.$INPUT)
+}
+
+// ── Sub-agent spawning ────────────────────────────────────────────
+
+function spawnAgent(opts: {
+	cwd: string
+	agentName: string
+	prompt: string
+	tools?: string[]
+	sessionDir: string
+	signal?: AbortSignal
+	onUpdate?: (state: AgentState) => void
+}): Promise<SpawnResult> {
+	return new Promise((resolve, reject) => {
+		const sessionFile = join(opts.sessionDir, `${opts.agentName}-${Date.now()}.json`)
+		const args = ["--mode", "json", "-p", "--session", sessionFile, "--no-extensions"]
+
+		if (opts.tools && opts.tools.length > 0) {
+			args.push("--tools", opts.tools.join(","))
+		}
+
+		// Load agent system prompt if available
+		const frontmatter = parseAgentFrontmatter(opts.cwd, opts.agentName)
+		if (frontmatter?.body) {
+			args.push("--append-system-prompt", frontmatter.body)
+		}
+
+		args.push(opts.prompt)
+
+		const start = Date.now()
+		let output = ""
+		let toolCount = 0
+		let buffer = ""
+
+		const child = spawn("pi", args, {
+			cwd: opts.cwd,
+			env: { ...process.env },
+			stdio: ["ignore", "pipe", "pipe"],
+		})
+
+		// Handle abort signal
+		if (opts.signal) {
+			const onAbort = () => {
+				child.kill("SIGTERM")
+				reject(new Error("Dispatch aborted"))
+			}
+			opts.signal.addEventListener("abort", onAbort, { once: true })
+			child.on("exit", () => opts.signal?.removeEventListener("abort", onAbort))
+		}
+
+		child.stdout.on("data", (chunk: Buffer) => {
+			buffer += chunk.toString()
+			const lines = buffer.split("\n")
+			buffer = lines.pop() || ""
+
+			for (const line of lines) {
+				if (!line.trim()) continue
+				try {
+					const event = JSON.parse(line)
+
+					if (event.type === "message_update" && event.assistantMessageEvent?.type === "text_delta") {
+						output += event.assistantMessageEvent.delta
+					}
+
+					if (event.type === "tool_execution_start") {
+						toolCount++
+					}
+
+					if (opts.onUpdate) {
+						opts.onUpdate({
+							name: opts.agentName,
+							status: "running",
+							elapsed: Date.now() - start,
+							toolCount,
+							lastOutput: output.slice(-200),
+						})
+					}
+				} catch {
+					// skip non-JSON lines
+				}
+			}
+		})
+
+		let stderr = ""
+		child.stderr.on("data", (chunk: Buffer) => {
+			stderr += chunk.toString()
+		})
+
+		child.on("error", (err) => {
+			reject(new Error(`Failed to spawn agent "${opts.agentName}": ${err.message}`))
+		})
+
+		child.on("exit", (code) => {
+			// Process remaining buffer
+			if (buffer.trim()) {
+				try {
+					const event = JSON.parse(buffer)
+					if (event.type === "message_update" && event.assistantMessageEvent?.type === "text_delta") {
+						output += event.assistantMessageEvent.delta
+					}
+				} catch {
+					// ignore
+				}
+			}
+
+			const elapsed = Date.now() - start
+
+			if (code !== 0 && !output) {
+				reject(new Error(`Agent "${opts.agentName}" exited with code ${code}: ${stderr.slice(-500)}`))
+			} else {
+				resolve({ output: output.trim(), toolCount, elapsed })
+			}
+		})
+	})
+}
+
 // ── Extension entry point ──────────────────────────────────────────
 
 export default function (pi: ExtensionAPI) {
 	// ── Tool: dispatch ─────────────────────────────────────────────
-	// Used by orchestrator agents to programmatically invoke chains/teams
+	// Spawns real sub-agents to execute chains/teams/individual agents
 
 	pi.registerTool({
 		name: "dispatch",
+		label: "Dispatch",
 		description:
-			"Dispatch work to an agent chain, team, or individual agent. Used by orchestrator agents to coordinate multi-agent workflows. Returns a description of what would be invoked — the orchestrator then communicates this plan to the user.",
+			"Dispatch work to an agent chain, team, or individual agent. Spawns real sub-agent processes. For chains, steps execute sequentially with output passing as $INPUT. For teams, all agents run in parallel. Returns the final output.",
 		parameters: Type.Object({
 			type: Type.String({
 				description: 'What to invoke: "chain", "team", or "agent"',
@@ -131,19 +325,22 @@ export default function (pi: ExtensionAPI) {
 		execute: async (
 			_toolCallId: string,
 			params: { type: string; target: string; input: string; skill?: string },
-			_signal: AbortSignal,
+			signal: AbortSignal,
 			_onUpdate: any,
 			_ctx: any
 		) => {
 			const cwd = _ctx.cwd ?? process.cwd()
+			const sessionDir = ensureSessionDir(cwd)
 
-			// Read the composition definitions
+			// ── Chain execution ──────────────────────────────────────
 			if (params.type === "chain") {
 				const chainsPath = join(cwd, ".pi", "agents", "chains.yaml")
 				if (!existsSync(chainsPath)) {
 					return { content: [{ type: "text", text: "Error: chains.yaml not found" }] }
 				}
-				const chains = parseYaml(readFileSync(chainsPath, "utf-8")) as Record<string, any[]>
+
+				const chainsRaw = readFileSync(chainsPath, "utf-8")
+				const chains = parseYaml(chainsRaw) as Record<string, ChainStep[]>
 				const chain = chains[params.target]
 				if (!chain) {
 					return {
@@ -151,27 +348,117 @@ export default function (pi: ExtensionAPI) {
 					}
 				}
 
-				const steps = chain.map((step: any, i: number) => `  Step ${i + 1}: ${step.agent}`).join("\n")
-				return {
-					content: [{ type: "text", text: [
-						`## Dispatch: Chain "${params.target}"`,
-						"",
-						`**Steps:**`,
-						steps,
-						"",
-						`**Input:** ${params.input.substring(0, 200)}...`,
-						"",
-						`To execute this chain, invoke each agent in sequence, passing the output of each step as $INPUT to the next.`,
-						`The chain definition in .pi/agents/chains.yaml contains the exact prompts for each step.`,
-					].join("\n") }],
+				pi.events.emit("dispatch:chain-start", { chain: params.target, stepCount: chain.length })
+
+				let currentInput = params.input
+				const originalInput = params.input
+				const stepResults: Array<{ agent: string; output: string; elapsed: number; toolCount: number }> = []
+
+				for (let i = 0; i < chain.length; i++) {
+					const step = chain[i]
+					const stepPrompt = buildPrompt(step.prompt, {
+						$ORIGINAL: originalInput,
+						$INPUT: currentInput,
+					})
+
+					pi.events.emit("dispatch:step-start", {
+						chain: params.target,
+						step: i + 1,
+						totalSteps: chain.length,
+						agent: step.agent,
+					})
+
+					// Resolve agent tools from frontmatter
+					const frontmatter = parseAgentFrontmatter(cwd, step.agent)
+					const tools = frontmatter?.tools.length ? frontmatter.tools : undefined
+
+					try {
+						const result = await spawnAgent({
+							cwd,
+							agentName: step.agent,
+							prompt: stepPrompt,
+							tools,
+							sessionDir,
+							signal,
+							onUpdate: (state) => {
+								pi.events.emit("dispatch:step-progress", {
+									chain: params.target,
+									step: i + 1,
+									...state,
+								})
+							},
+						})
+
+						stepResults.push({
+							agent: step.agent,
+							output: result.output,
+							elapsed: result.elapsed,
+							toolCount: result.toolCount,
+						})
+
+						currentInput = result.output
+
+						pi.events.emit("dispatch:step-complete", {
+							chain: params.target,
+							step: i + 1,
+							agent: step.agent,
+							elapsed: result.elapsed,
+							toolCount: result.toolCount,
+							outputPreview: result.output.slice(0, 200),
+						})
+					} catch (err: any) {
+						pi.events.emit("dispatch:error", {
+							chain: params.target,
+							step: i + 1,
+							agent: step.agent,
+							error: err.message,
+						})
+
+						const totalElapsed = stepResults.reduce((sum, r) => sum + r.elapsed, 0)
+						const summary = [
+							`## Chain "${params.target}" — FAILED at step ${i + 1}/${chain.length}`,
+							"",
+							...stepResults.map((r, j) => `Step ${j + 1} (${r.agent}): completed in ${(r.elapsed / 1000).toFixed(1)}s, ${r.toolCount} tools`),
+							`Step ${i + 1} (${step.agent}): FAILED — ${err.message}`,
+							"",
+							`Total elapsed: ${(totalElapsed / 1000).toFixed(1)}s`,
+						]
+						return { content: [{ type: "text", text: summary.join("\n") }] }
+					}
 				}
+
+				const totalElapsed = stepResults.reduce((sum, r) => sum + r.elapsed, 0)
+
+				pi.events.emit("dispatch:chain-complete", {
+					chain: params.target,
+					totalElapsed,
+					stepCount: chain.length,
+				})
+
+				const summary = [
+					`## Chain "${params.target}" — Completed`,
+					"",
+					...stepResults.map((r, i) => `Step ${i + 1} (${r.agent}): ${(r.elapsed / 1000).toFixed(1)}s, ${r.toolCount} tools`),
+					"",
+					`Total: ${(totalElapsed / 1000).toFixed(1)}s`,
+					"",
+					"---",
+					"",
+					"## Final Output",
+					"",
+					currentInput,
+				]
+
+				return { content: [{ type: "text", text: summary.join("\n") }] }
 			}
 
+			// ── Team execution (parallel) ────────────────────────────
 			if (params.type === "team") {
 				const teamsPath = join(cwd, ".pi", "agents", "teams.yaml")
 				if (!existsSync(teamsPath)) {
 					return { content: [{ type: "text", text: "Error: teams.yaml not found" }] }
 				}
+
 				const teams = parseYaml(readFileSync(teamsPath, "utf-8")) as Record<string, string[]>
 				const team = teams[params.target]
 				if (!team) {
@@ -180,29 +467,105 @@ export default function (pi: ExtensionAPI) {
 					}
 				}
 
-				return {
-					content: [{ type: "text", text: [
-						`## Dispatch: Team "${params.target}"`,
-						"",
-						`**Agents (parallel):** ${team.join(", ")}`,
-						"",
-						`**Input:** ${params.input.substring(0, 200)}...`,
-						"",
-						`To execute this team, invoke all agents simultaneously with the same input and collect their outputs.`,
-					].join("\n") }],
-				}
+				pi.events.emit("dispatch:team-start", { team: params.target, agents: team })
+
+				const promises = team.map(async (agentName) => {
+					const frontmatter = parseAgentFrontmatter(cwd, agentName)
+					const tools = frontmatter?.tools.length ? frontmatter.tools : undefined
+
+					pi.events.emit("dispatch:step-start", {
+						team: params.target,
+						agent: agentName,
+					})
+
+					try {
+						const result = await spawnAgent({
+							cwd,
+							agentName,
+							prompt: params.input,
+							tools,
+							sessionDir,
+							signal,
+						})
+
+						pi.events.emit("dispatch:step-complete", {
+							team: params.target,
+							agent: agentName,
+							elapsed: result.elapsed,
+							toolCount: result.toolCount,
+						})
+
+						return { agent: agentName, ...result, error: null }
+					} catch (err: any) {
+						pi.events.emit("dispatch:error", {
+							team: params.target,
+							agent: agentName,
+							error: err.message,
+						})
+						return { agent: agentName, output: "", toolCount: 0, elapsed: 0, error: err.message }
+					}
+				})
+
+				const results = await Promise.all(promises)
+
+				pi.events.emit("dispatch:team-complete", {
+					team: params.target,
+					agentCount: team.length,
+				})
+
+				const lines = [
+					`## Team "${params.target}" — Completed`,
+					"",
+					...results.map((r) => {
+						if (r.error) return `### ${r.agent} — FAILED\n${r.error}`
+						return `### ${r.agent} (${(r.elapsed / 1000).toFixed(1)}s, ${r.toolCount} tools)\n\n${r.output}`
+					}),
+				]
+
+				return { content: [{ type: "text", text: lines.join("\n\n") }] }
 			}
 
+			// ── Single agent execution ───────────────────────────────
 			if (params.type === "agent") {
-				const skillNote = params.skill ? ` with skill "${params.skill}"` : ""
-				return {
-					content: [{ type: "text", text: [
-						`## Dispatch: Agent "${params.target}"${skillNote}`,
-						"",
-						`**Input:** ${params.input.substring(0, 200)}...`,
-						"",
-						`To execute, invoke the ${params.target} agent${skillNote} with the provided input.`,
-					].join("\n") }],
+				const frontmatter = parseAgentFrontmatter(cwd, params.target)
+				if (!frontmatter) {
+					return {
+						content: [{ type: "text", text: `Error: agent "${params.target}" not found in roles/, tasks/, or orchestrators/` }],
+					}
+				}
+
+				const prompt = params.skill
+					? `Using the ${params.skill} skill, ${params.input}`
+					: params.input
+
+				pi.events.emit("dispatch:step-start", { agent: params.target })
+
+				try {
+					const result = await spawnAgent({
+						cwd,
+						agentName: params.target,
+						prompt,
+						tools: frontmatter.tools.length ? frontmatter.tools : undefined,
+						sessionDir,
+						signal,
+					})
+
+					pi.events.emit("dispatch:step-complete", {
+						agent: params.target,
+						elapsed: result.elapsed,
+						toolCount: result.toolCount,
+					})
+
+					return {
+						content: [{ type: "text", text: [
+							`## Agent "${params.target}" — Completed (${(result.elapsed / 1000).toFixed(1)}s, ${result.toolCount} tools)`,
+							"",
+							result.output,
+						].join("\n") }],
+					}
+				} catch (err: any) {
+					pi.events.emit("dispatch:error", { agent: params.target, error: err.message })
+					return { content: [{ type: "text", text: `Error: agent "${params.target}" failed: ${err.message}` }] }
 				}
 			}
 
@@ -211,10 +574,10 @@ export default function (pi: ExtensionAPI) {
 	})
 
 	// ── Tool: route ────────────────────────────────────────────────
-	// Analyzes input and recommends the best routing based on routing.yaml
 
 	pi.registerTool({
 		name: "route",
+		label: "Route",
 		description:
 			"Analyze a user request and recommend the best routing (chain, team, or agent) based on the routing rules in .pi/agents/routing.yaml. Returns the matched rule and recommended invocation.",
 		parameters: Type.Object({
@@ -292,10 +655,10 @@ export default function (pi: ExtensionAPI) {
 	})
 
 	// ── Tool: progress ─────────────────────────────────────────────
-	// Read and update orchestration progress state
 
 	pi.registerTool({
 		name: "progress",
+		label: "Progress",
 		description:
 			"Read or update the orchestration progress tracker at .pi/state/progress.yaml. Used by orchestrators to track multi-chain execution state.",
 		parameters: Type.Object({
@@ -351,7 +714,6 @@ export default function (pi: ExtensionAPI) {
 				}
 
 				if (params.taskId && params.status) {
-					// Update task status
 					for (const wave of state.waves) {
 						for (const task of wave.tasks) {
 							const taskKey = `${task.chain}:${task.docType}`
@@ -362,7 +724,6 @@ export default function (pi: ExtensionAPI) {
 						}
 					}
 
-					// Update summary lists
 					state.completed = state.waves
 						.flatMap((w) => w.tasks)
 						.filter((t) => t.status === "completed")
@@ -400,7 +761,6 @@ export default function (pi: ExtensionAPI) {
 				return
 			}
 
-			// Route the request, then invoke the project orchestrator
 			pi.sendUserMessage(
 				`Use the \`route\` tool to analyze this request: "${args.trim()}"\n\n` +
 					`Then, acting as the project-orchestrator agent (read .pi/agents/orchestrators/project.md for your instructions), ` +
@@ -442,9 +802,7 @@ export default function (pi: ExtensionAPI) {
 
 	// ── Event bus: inter-agent communication ───────────────────────
 
-	// Agents can publish findings that other agents subscribe to
 	pi.on("agent:finding", (data: any) => {
-		// Store findings for cross-agent access
 		const cwd = process.cwd()
 		const findingsDir = join(cwd, ".pi", "state", "findings")
 		if (!existsSync(findingsDir)) mkdirSync(findingsDir, { recursive: true })
@@ -453,9 +811,11 @@ export default function (pi: ExtensionAPI) {
 		writeFileSync(join(findingsDir, filename), stringifyYaml(data), "utf-8")
 	})
 
-	// Agents can check if other agents have produced relevant findings
+	// ── Tool: findings ────────────────────────────────────────────
+
 	pi.registerTool({
 		name: "findings",
+		label: "Findings",
 		description:
 			"Read findings published by other agents via the event bus. Useful for orchestrators and reviewers to see what previous agents discovered.",
 		parameters: Type.Object({

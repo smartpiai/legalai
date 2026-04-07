@@ -207,6 +207,57 @@ These sections exist in every template and must be present in every document:
 
 The second example may contain useful information, but it doesn't adhere to the template. It cannot pass review.
 
+## Sprint System
+
+Sprints are time-boxed work packages that connect the MODERNIZATION_ROADMAP.md to executable tasks.
+
+**Commands:**
+- `/sprint status` — Show current sprint progress
+- `/sprint plan <phases>` — Auto-plan a sprint from roadmap phases (e.g., `/sprint plan 0,1`)
+- `/sprint execute` — Execute sprint backlog in dependency order via dispatch
+- `/sprint close` — Close sprint and generate summary
+- `/standup` — Daily standup: done, in progress, blocked
+- `/retro` — Sprint retrospective with velocity analysis
+- `/board` — Show sprint backlog as kanban board
+
+**Tools:**
+- `sprint_status` — Read current sprint state
+- `sprint_update` — Update backlog item status (auto-unblocks dependents)
+- `sprint_plan` — Auto-generate sprint from roadmap + document matrix
+
+**State:** `.pi/state/sprints/sprint-{N}.yaml`
+
+Sprint planning auto-generates backlog items from:
+- Required documents per phase (from DOCUMENT_MATRIX.md)
+- Existing document inventory (from `docs/`)
+- Upstream dependencies (BRD → PRD → Tech Spec → ...)
+- Role assignments (BRD → PM, Tech Spec → Tech Lead, etc.)
+
+## Safety Enforcement
+
+Safety rules in `.pi/safety-rules.yaml` are **enforced at runtime** by the `safety-enforcer` extension:
+
+- **Bash patterns**: Dangerous commands (rm -rf, git push --force, DROP TABLE, etc.) trigger confirmation dialogs or hard blocks
+- **Zero-access paths**: `.env`, secrets, SSH keys, cloud credentials — ALL operations blocked
+- **Read-only paths**: Lock files, CI configs, `.git/` — reads allowed, writes blocked
+- **No-delete paths**: LICENSE, CLAUDE.md, `.pi/`, templates — delete operations blocked
+
+Negation patterns (`!**/.env.example`) whitelist specific paths from broader rules.
+
+## Cross-Agent Discovery
+
+The `cross-discovery` extension scans for agent definitions across tool directories:
+- `.claude/agents/`, `.gemini/agents/`, `.codex/agents/` (project and global)
+- Discovered agents become available as dispatch targets
+- Use `list_agents` tool or `/agents` command to see all known agents
+
+## TUI Dashboard
+
+- **Footer**: Context meter, token in/out, cost, active role, git branch, tool counts
+- **Dispatch widget**: Live progress when chains/teams are executing
+- **Commands**: `/gates` (gate readiness), `/board` (sprint kanban)
+- **Notifications**: Toast when chains complete, sprint items finish, gates change
+
 ## Behavioral Guidelines
 
 1. **Read the template before writing.** Not negotiable. Read `docs/templates/{TYPE}_TEMPLATE.md` every time.

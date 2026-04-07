@@ -168,6 +168,18 @@
   target: phase-orchestrator
   description: "Decompose into per-document chains with dependency ordering"
 
+# ── Sprint operations ─────────────────────────────────────────
+
+- match: "(plan|start|create)\\s+sprint"
+  route: agent
+  target: sprint-orchestrator
+  description: "Auto-plan a sprint from roadmap"
+
+- match: "(sprint|backlog|velocity|standup|retro)"
+  route: agent
+  target: sprint-orchestrator
+  description: "Sprint planning, tracking, and execution"
+
 # ── Fallback ────────────────────────────────────────────────────
 
 - match: ".*"

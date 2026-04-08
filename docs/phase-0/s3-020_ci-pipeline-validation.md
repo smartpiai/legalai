@@ -2,7 +2,7 @@
 
 **Sprint:** 3
 **Task:** S3-020 — Validate Gitea Actions pipeline YAML and document expected execution timing.
-**Workflow file:** `.gitea/workflows/ci.yml`
+**Workflow file:** `.github/workflows/ci.yml`
 **Date:** 2026-04-08
 
 ## 1. Static YAML Validation
@@ -10,7 +10,7 @@
 The workflow file was parsed successfully with PyYAML `safe_load`:
 
 ```
-python3 -c "import yaml; yaml.safe_load(open('.gitea/workflows/ci.yml'))"
+python3 -c "import yaml; yaml.safe_load(open('.github/workflows/ci.yml'))"
 # => no errors (BOTH OK including docker-compose.yml)
 ```
 

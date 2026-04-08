@@ -4,6 +4,9 @@ Following TDD - RED phase: Comprehensive test suite for risk assessment dashboar
 """
 
 import pytest
+
+# S3-005: imports app.models.* (missing) and/or requires live database.
+pytestmark = pytest.mark.skip(reason="Phase 1 rewrite scope: app/models package not yet scaffolded; live database required")
 import asyncio
 from datetime import datetime, timedelta, date
 from unittest.mock import Mock, patch, AsyncMock, MagicMock

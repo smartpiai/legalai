@@ -560,6 +560,7 @@ cache/
 !pnpm-lock.yaml
 !Pipfile.lock
 !poetry.lock
+!requirements.lock
 !composer.lock
 
 # ===========================

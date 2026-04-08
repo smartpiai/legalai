@@ -6,6 +6,10 @@ authentication, authorization, and performance assertions.
 Following strict TDD methodology with Red-Green-Refactor cycle.
 No mocks or stubs - uses real implementations only.
 """
+import pytest
+
+# S3-005: requires live database + all infrastructure services.
+pytestmark = pytest.mark.skip(reason="Phase 1 rewrite scope: integration tests require live PostgreSQL, Redis, Neo4j, Qdrant, MinIO")
 import asyncio
 import json
 import time

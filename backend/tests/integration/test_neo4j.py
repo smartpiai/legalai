@@ -4,6 +4,9 @@ Following TDD methodology - tests written before implementation.
 """
 import asyncio
 import pytest
+
+# S3-005: requires live Neo4j instance.
+pytestmark = pytest.mark.skip(reason="Phase 1 rewrite scope: integration test requires live Neo4j service")
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 

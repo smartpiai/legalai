@@ -38,3 +38,11 @@ part of Sprint 3 (tasks S3-007 through S3-011).
     environment with `pip-tools` installed and network access to PyPI.
 - `npm audit` and `npm install` were available and used to regenerate
   `frontend/package-lock.json` after the Vite pin bump.
+
+## S3-009 — package-lock.json sync verification (2026-04-08)
+
+- `frontend/package-lock.json` is tracked in git (`git ls-files` confirmed).
+- `cd frontend && npm ci --dry-run` completed successfully (700 packages
+  resolved with no drift errors), confirming the lockfile is in sync with
+  `frontend/package.json` prior to the Vite pin bump in S3-011.
+- Acceptance criteria **IT-LF-03** and **IT-LF-04** satisfied.

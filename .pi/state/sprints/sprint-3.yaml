@@ -1,0 +1,413 @@
+id: 3
+name: Phase 0 Implementation
+goal: Execute Phase 0 stabilization (CI, Docker, deps, test baselines) per Tech
+  Spec rollout plan and Mig Guide
+startDate: 2026-04-07
+endDate: 2026-04-21
+roadmapPhases:
+  - "0"
+status: completed
+backlog:
+  - id: S3-001
+    title: Fix WorkflowDesignerPage frontend tests (~59% → 100%)
+    type: impl
+    workstream: app
+    template: none
+    phase: "0"
+    assignee: frontend-dev
+    chain: TODO
+    gate: pre-merge
+    status: done
+    priority: p0
+    dependsOn: []
+    touches:
+      - frontend/src/pages/workflows/__tests__/WorkflowDesignerPage.test.tsx
+    acceptanceCriteria:
+      - UT-WF-01
+      - UT-WF-02
+      - UT-WF-03
+      - UT-WF-04
+      - UT-WF-05
+      - UT-WF-06
+      - UT-WF-07
+      - UT-WF-08
+
+  - id: S3-002
+    title: Fix AdminDashboardPage frontend tests (~83% → 100%)
+    type: impl
+    workstream: app
+    template: none
+    phase: "0"
+    assignee: frontend-dev
+    chain: TODO
+    gate: pre-merge
+    status: done
+    priority: p0
+    dependsOn: []
+    touches:
+      - frontend/src/pages/admin/__tests__/AdminDashboardPage.test.tsx
+    acceptanceCriteria:
+      - UT-AD-01
+      - UT-AD-02
+      - UT-AD-03
+      - UT-AD-04
+      - UT-AD-05
+      - UT-AD-06
+      - UT-AD-07
+      - UT-AD-08
+
+  - id: S3-003
+    title: Audit and disposition all _green test variants
+    type: impl
+    workstream: app
+    template: none
+    phase: "0"
+    assignee: backend-dev
+    chain: TODO
+    gate: pre-merge
+    status: done
+    priority: p0
+    dependsOn: []
+    touches:
+      - backend/tests/**/*_green.py
+    acceptanceCriteria:
+      - UT-GR-01
+      - UT-GR-02
+      - UT-GR-03
+      - UT-GR-04
+      - UT-GR-05
+      - UT-GR-06
+      - UT-GR-07
+
+  - id: S3-004
+    title: Add backend pyproject.toml with pytest, ruff, mypy config
+    type: impl
+    workstream: app
+    template: none
+    phase: "0"
+    assignee: backend-dev
+    chain: TODO
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn: []
+    touches:
+      - backend/pyproject.toml
+    acceptanceCriteria: []
+    output: "no Test Spec case maps directly — verify against Tech Spec §3.1"
+
+  - id: S3-005
+    title: Fix or skip all failing backend tests (pytest green baseline)
+    type: impl
+    workstream: app
+    template: none
+    phase: "0"
+    assignee: backend-dev
+    chain: TODO
+    gate: pre-merge
+    status: done
+    priority: p0
+    dependsOn:
+      - S3-004
+    touches:
+      - backend/tests/**/*.py
+    acceptanceCriteria:
+      - UT-BE-01
+      - UT-BE-02
+      - UT-BE-03
+      - UT-BE-04
+      - UT-BE-05
+
+  - id: S3-006
+    title: Fix or skip all failing frontend tests (vitest green baseline)
+    type: impl
+    workstream: app
+    template: none
+    phase: "0"
+    assignee: frontend-dev
+    chain: TODO
+    gate: pre-merge
+    status: done
+    priority: p0
+    dependsOn:
+      - S3-001
+      - S3-002
+      - S3-003
+    touches:
+      - frontend/src/**/__tests__/*.test.tsx
+      - frontend/src/**/__tests__/*.test.ts
+    acceptanceCriteria:
+      - UT-FE-01
+      - UT-FE-02
+      - UT-FE-03
+      - UT-FE-04
+
+  - id: S3-007
+    title: Run pip-audit and npm audit; document CVE findings
+    type: impl
+    workstream: deps
+    template: none
+    phase: "0"
+    assignee: backend-dev
+    chain: TODO
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn: []
+    touches:
+      - docs/phase-0/audit-reports/**
+    acceptanceCriteria: []
+    output: "no Test Spec case — produces artifact consumed by S3-008/S3-010/S3-011"
+
+  - id: S3-008
+    title: Generate requirements.lock with pip-compile and hashes
+    type: impl
+    workstream: deps
+    template: dep-bump
+    phase: "0"
+    assignee: backend-dev
+    chain: TODO
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn:
+      - S3-007
+    touches:
+      - backend/requirements.lock
+      - backend/requirements.txt
+    acceptanceCriteria:
+      - IT-LF-01
+      - IT-LF-02
+
+  - id: S3-009
+    title: Verify package-lock.json committed and in-sync
+    type: impl
+    workstream: deps
+    template: dep-bump
+    phase: "0"
+    assignee: frontend-dev
+    chain: TODO
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn: []
+    touches:
+      - frontend/package-lock.json
+    acceptanceCriteria:
+      - IT-LF-03
+      - IT-LF-04
+
+  - id: S3-010
+    title: Replace passlib with bcrypt directly (sec-review F4 remediation)
+    type: impl
+    workstream: deps
+    template: dep-bump
+    phase: "0"
+    assignee: backend-dev
+    chain: TODO
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn:
+      - S3-008
+    touches:
+      - backend/requirements.txt
+      - backend/requirements.lock
+      - backend/app/core/security.py
+    acceptanceCriteria: []
+    output: "addresses sec-review finding F4; no Test Spec case"
+
+  - id: S3-011
+    title: Pin Vite to >=5.0.12 (sec-review F5 / CVE-2024-23331)
+    type: impl
+    workstream: deps
+    template: dep-bump
+    phase: "0"
+    assignee: frontend-dev
+    chain: TODO
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn:
+      - S3-009
+    touches:
+      - frontend/package.json
+      - frontend/package-lock.json
+    acceptanceCriteria: []
+    output: "addresses sec-review finding F5"
+
+  - id: S3-012
+    title: Pin Docker images to version tags with SHA256 digests (sec-review F6)
+    type: impl
+    workstream: docker
+    template: docker-service
+    phase: "0"
+    assignee: devops
+    chain: build-docker-service
+    gate: pre-deploy
+    status: done
+    priority: p2
+    dependsOn: []
+    touches:
+      - docker-compose.yml
+    acceptanceCriteria: []
+    output: "addresses sec-review finding F6"
+
+  - id: S3-013
+    title: Add backend test-backend CI job (pytest + coverage)
+    type: impl
+    workstream: ci
+    template: ci-workflow
+    phase: "0"
+    assignee: devops
+    chain: build-ci-workflow
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn:
+      - S3-005
+      - S3-008
+    touches:
+      - .gitea/workflows/ci.yml
+    acceptanceCriteria:
+      - IT-CI-01
+      - IT-CI-02
+
+  - id: S3-014
+    title: Add frontend test-frontend CI job (vitest + coverage)
+    type: impl
+    workstream: ci
+    template: ci-workflow
+    phase: "0"
+    assignee: devops
+    chain: build-ci-workflow
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn:
+      - S3-006
+      - S3-009
+    touches:
+      - .gitea/workflows/ci.yml
+    acceptanceCriteria:
+      - IT-CI-03
+      - IT-CI-04
+
+  - id: S3-015
+    title: Add lint-backend CI job (ruff + mypy)
+    type: impl
+    workstream: ci
+    template: ci-workflow
+    phase: "0"
+    assignee: devops
+    chain: build-ci-workflow
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn:
+      - S3-004
+    touches:
+      - .gitea/workflows/ci.yml
+    acceptanceCriteria:
+      - IT-CI-05
+      - IT-CI-06
+
+  - id: S3-016
+    title: Add lint-frontend CI job (eslint + tsc)
+    type: impl
+    workstream: ci
+    template: ci-workflow
+    phase: "0"
+    assignee: devops
+    chain: build-ci-workflow
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn: []
+    touches:
+      - .gitea/workflows/ci.yml
+    acceptanceCriteria:
+      - IT-CI-07
+      - IT-CI-08
+
+  - id: S3-017
+    title: Add security-audit CI job (pip-audit + npm audit)
+    type: impl
+    workstream: ci
+    template: ci-workflow
+    phase: "0"
+    assignee: devops
+    chain: build-ci-workflow
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn:
+      - S3-008
+      - S3-009
+    touches:
+      - .gitea/workflows/ci.yml
+    acceptanceCriteria:
+      - IT-CI-09
+      - IT-CI-10
+      - IT-CI-11
+
+  - id: S3-018
+    title: Add build CI job (docker-compose build validation)
+    type: impl
+    workstream: ci
+    template: ci-workflow
+    phase: "0"
+    assignee: devops
+    chain: build-ci-workflow
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn:
+      - S3-013
+      - S3-014
+      - S3-015
+      - S3-016
+      - S3-017
+    touches:
+      - .gitea/workflows/ci.yml
+    acceptanceCriteria:
+      - IT-CI-12
+      - IT-CI-13
+
+  - id: S3-019
+    title: Add baseline-record CI job (metrics artifact on main merge)
+    type: impl
+    workstream: ci
+    template: ci-workflow
+    phase: "0"
+    assignee: devops
+    chain: build-ci-workflow
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn:
+      - S3-018
+    touches:
+      - .gitea/workflows/ci.yml
+      - scripts/record-baseline.sh
+    acceptanceCriteria:
+      - IT-CI-14
+      - IT-CI-15
+      - IT-CI-16
+
+  - id: S3-020
+    title: Validate full CI pipeline execution and timing (< 10 min)
+    type: impl
+    workstream: ci
+    template: none
+    phase: "0"
+    assignee: devops
+    chain: TODO
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn:
+      - S3-019
+    touches: []
+    acceptanceCriteria:
+      - IT-CI-16

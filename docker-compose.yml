@@ -2,7 +2,7 @@ services:
   # Database Services (Start First)
   # PostgreSQL - Primary Database
   postgres:
-    image: postgres:15
+    image: postgres:15@sha256:31224c60946ea75ee9522e0f4d02eb202e74754adea4294fdefe9f93c875b657
     container_name: legal-ai-postgres
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
@@ -23,7 +23,7 @@ services:
 
   # Redis - Cache and Message Broker
   redis:
-    image: redis:7-alpine
+    image: redis:7-alpine@sha256:8b81dd37ff027bec4e516d41acfbe9fe2460070dc6d4a4570a2ac5b9d59df065
     container_name: legal-ai-redis
     ports:
       - "${REDIS_PORT}:6379"
@@ -39,7 +39,7 @@ services:
 
   # Neo4j - Graph Database
   neo4j:
-    image: neo4j:5
+    image: neo4j:5@sha256:7a7e514888d668103d4a3a28516613ffdbb79f2161f91e49dfbd57c2b7f10d8f
     container_name: legal-ai-neo4j
     ports:
       - "${NEO4J_HTTP_PORT}:7474"
@@ -65,7 +65,7 @@ services:
 
   # Qdrant - Vector Database
   qdrant:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:latest@sha256:94728574965d17c6485dd361aa3c0818b325b9016dac5ea6afec7b4b2700865f
     container_name: legal-ai-qdrant
     ports:
       - "${QDRANT_PORT}:6333"
@@ -82,7 +82,7 @@ services:
 
   # MinIO - Object Storage
   minio:
-    image: minio/minio:latest
+    image: minio/minio:latest@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
     container_name: legal-ai-minio
     ports:
       - "${MINIO_PORT}:9000"
@@ -103,7 +103,7 @@ services:
 
   # ClamAV - Antivirus
   clamav:
-    image: clamav/clamav:stable
+    image: clamav/clamav:latest@sha256:65ae17252e5fc2605ff0a0ccd18dd2dd43f8aef6591d999cdee2f5b6714b5668
     platform: linux/amd64
     container_name: legal-ai-clamav
     ports:

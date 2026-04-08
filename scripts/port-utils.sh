@@ -12,50 +12,62 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
+# All service keys
+ALL_SERVICE_KEYS="POSTGRES_PORT REDIS_PORT NEO4J_PORT NEO4J_HTTP_PORT QDRANT_PORT QDRANT_GRPC_PORT MINIO_PORT MINIO_CONSOLE_PORT CLAMAV_PORT BACKEND_PORT FRONTEND_PORT"
+
 # Port range definitions (safe ranges to avoid system ports)
-declare -A DEFAULT_PORTS=(
-    ["POSTGRES_PORT"]=5432
-    ["REDIS_PORT"]=6379
-    ["NEO4J_PORT"]=7687
-    ["NEO4J_HTTP_PORT"]=7474
-    ["QDRANT_PORT"]=6333
-    ["QDRANT_GRPC_PORT"]=6334
-    ["MINIO_PORT"]=9000
-    ["MINIO_CONSOLE_PORT"]=9001
-    ["CLAMAV_PORT"]=3310
-    ["BACKEND_PORT"]=8000
-    ["FRONTEND_PORT"]=3000
-)
+DEFAULT_PORT_POSTGRES_PORT=5432
+DEFAULT_PORT_REDIS_PORT=6379
+DEFAULT_PORT_NEO4J_PORT=7687
+DEFAULT_PORT_NEO4J_HTTP_PORT=7474
+DEFAULT_PORT_QDRANT_PORT=6333
+DEFAULT_PORT_QDRANT_GRPC_PORT=6334
+DEFAULT_PORT_MINIO_PORT=9000
+DEFAULT_PORT_MINIO_CONSOLE_PORT=9001
+DEFAULT_PORT_CLAMAV_PORT=3310
+DEFAULT_PORT_BACKEND_PORT=8000
+DEFAULT_PORT_FRONTEND_PORT=3000
 
 # Alternative port ranges when defaults are taken
-declare -A ALT_PORT_RANGES=(
-    ["POSTGRES_PORT"]="15432:15532"
-    ["REDIS_PORT"]="16379:16479"
-    ["NEO4J_PORT"]="17687:17787"
-    ["NEO4J_HTTP_PORT"]="17474:17574"
-    ["QDRANT_PORT"]="16333:16433"
-    ["QDRANT_GRPC_PORT"]="16334:16434"
-    ["MINIO_PORT"]="19000:19100"
-    ["MINIO_CONSOLE_PORT"]="19001:19101"
-    ["CLAMAV_PORT"]="13310:13410"
-    ["BACKEND_PORT"]="18000:18100"
-    ["FRONTEND_PORT"]="13000:13100"
-)
+ALT_RANGE_POSTGRES_PORT="15432:15532"
+ALT_RANGE_REDIS_PORT="16379:16479"
+ALT_RANGE_NEO4J_PORT="17687:17787"
+ALT_RANGE_NEO4J_HTTP_PORT="17474:17574"
+ALT_RANGE_QDRANT_PORT="16333:16433"
+ALT_RANGE_QDRANT_GRPC_PORT="16334:16434"
+ALT_RANGE_MINIO_PORT="19000:19100"
+ALT_RANGE_MINIO_CONSOLE_PORT="19001:19101"
+ALT_RANGE_CLAMAV_PORT="13310:13410"
+ALT_RANGE_BACKEND_PORT="18000:18100"
+ALT_RANGE_FRONTEND_PORT="13000:13100"
 
 # Service display names
-declare -A SERVICE_NAMES=(
-    ["POSTGRES_PORT"]="PostgreSQL"
-    ["REDIS_PORT"]="Redis"
-    ["NEO4J_PORT"]="Neo4j Bolt"
-    ["NEO4J_HTTP_PORT"]="Neo4j HTTP"
-    ["QDRANT_PORT"]="Qdrant API"
-    ["QDRANT_GRPC_PORT"]="Qdrant gRPC"
-    ["MINIO_PORT"]="MinIO API"
-    ["MINIO_CONSOLE_PORT"]="MinIO Console"
-    ["CLAMAV_PORT"]="ClamAV"
-    ["BACKEND_PORT"]="Backend API"
-    ["FRONTEND_PORT"]="Frontend"
-)
+SERVICE_NAME_POSTGRES_PORT="PostgreSQL"
+SERVICE_NAME_REDIS_PORT="Redis"
+SERVICE_NAME_NEO4J_PORT="Neo4j Bolt"
+SERVICE_NAME_NEO4J_HTTP_PORT="Neo4j HTTP"
+SERVICE_NAME_QDRANT_PORT="Qdrant API"
+SERVICE_NAME_QDRANT_GRPC_PORT="Qdrant gRPC"
+SERVICE_NAME_MINIO_PORT="MinIO API"
+SERVICE_NAME_MINIO_CONSOLE_PORT="MinIO Console"
+SERVICE_NAME_CLAMAV_PORT="ClamAV"
+SERVICE_NAME_BACKEND_PORT="Backend API"
+SERVICE_NAME_FRONTEND_PORT="Frontend"
+
+# Helper to get default port for a service key
+get_default_port() {
+    eval echo "\$DEFAULT_PORT_$1"
+}
+
+# Helper to get alt range for a service key
+get_alt_range() {
+    eval echo "\$ALT_RANGE_$1"
+}
+
+# Helper to get service name for a service key
+get_service_name() {
+    eval echo "\$SERVICE_NAME_$1"
+}
 
 # Function to check if a port is available
 is_port_available() {
@@ -144,7 +156,7 @@ get_random_port() {
 # Function to get alternative port for a service
 get_alternative_port() {
     local service_key=$1
-    local range="${ALT_PORT_RANGES[$service_key]}"
+    local range="$(get_alt_range "$service_key")"
     
     if [ -z "$range" ]; then
         # No alternative range defined, use generic high port
@@ -173,15 +185,15 @@ check_all_ports() {
     
     echo -e "${BLUE}Checking port availability...${NC}"
     echo ""
-    
-    for service_key in "${!DEFAULT_PORTS[@]}"; do
+
+    for service_key in $ALL_SERVICE_KEYS; do
         # Try to get port from env file first, then fall back to default
         local port=$(grep "^$service_key=" "$env_file" 2>/dev/null | cut -d= -f2)
         if [ -z "$port" ]; then
-            port="${DEFAULT_PORTS[$service_key]}"
+            port="$(get_default_port "$service_key")"
         fi
-        
-        local service_name="${SERVICE_NAMES[$service_key]}"
+
+        local service_name="$(get_service_name "$service_key")"
         
         if is_port_available $port; then
             port_status+=("${GREEN}✓${NC} $service_name (port $port): Available")
@@ -240,12 +252,12 @@ display_port_table() {
     printf "${CYAN}║${NC} %-20s │ %-10s │ %-10s │ %-10s ${CYAN}║${NC}\n" "Service" "Port" "Status" "Process"
     echo -e "${CYAN}╟──────────────────────┼────────────┼────────────┼────────────╢${NC}"
     
-    for service_key in POSTGRES_PORT REDIS_PORT NEO4J_PORT NEO4J_HTTP_PORT QDRANT_PORT QDRANT_GRPC_PORT MINIO_PORT MINIO_CONSOLE_PORT CLAMAV_PORT BACKEND_PORT FRONTEND_PORT; do
-        local service_name="${SERVICE_NAMES[$service_key]}"
+    for service_key in $ALL_SERVICE_KEYS; do
+        local service_name="$(get_service_name "$service_key")"
         local port=$(grep "^$service_key=" "$env_file" 2>/dev/null | cut -d= -f2)
-        
+
         if [ -z "$port" ]; then
-            port="${DEFAULT_PORTS[$service_key]}"
+            port="$(get_default_port "$service_key")"
         fi
         
         local status_symbol
@@ -306,8 +318,8 @@ reset_to_defaults() {
     
     echo -e "${YELLOW}Resetting to default ports...${NC}"
     
-    for service_key in "${!DEFAULT_PORTS[@]}"; do
-        local default_port="${DEFAULT_PORTS[$service_key]}"
+    for service_key in $ALL_SERVICE_KEYS; do
+        local default_port="$(get_default_port "$service_key")"
         update_env_port "$env_file" "$service_key" "$default_port"
     done
     

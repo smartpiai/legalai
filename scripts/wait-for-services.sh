@@ -71,7 +71,7 @@ check_postgres() {
     # Set defaults if environment variables are not set
     POSTGRES_HOST="${POSTGRES_HOST:-postgres}"
     POSTGRES_USER="${POSTGRES_USER:-postgres}"
-    POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-dev_password_change_in_prod}"
+    POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-password}"
     POSTGRES_DB="${POSTGRES_DB:-legal_ai}"
     
     if python -c "

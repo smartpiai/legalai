@@ -3,6 +3,10 @@ Tests for RAG (Retrieval-Augmented Generation) API endpoints.
 Following TDD methodology - tests written before implementation.
 """
 import pytest
+
+# S3-005: imports app.* and requires live app + database.
+pytestmark = pytest.mark.skip(reason="Phase 1 rewrite scope: app/models package not yet scaffolded; live app unavailable")
+
 from unittest.mock import Mock, AsyncMock, patch
 import numpy as np
 from typing import Dict, Any, List

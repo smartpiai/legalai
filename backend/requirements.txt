@@ -54,8 +54,8 @@ minio==7.2.0
 
 # Security
 python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-bcrypt==3.2.2
+# passlib removed (unmaintained, F4); bcrypt is used directly in app.core.security
+bcrypt==4.1.3
 python-decouple==3.8
 
 # Utils

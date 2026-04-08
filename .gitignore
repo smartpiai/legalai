@@ -1,6 +1,19 @@
 # Legal AI Platform - Comprehensive .gitignore
 # ================================================
 
+# Claude Code user-specific memory
+.claude/
+
+# Pi org runtime — ephemeral session traces (sprint state stays committed)
+.pi/state/sessions/
+.pi/node_modules/
+
+# pi-viewer local tool
+tools/pi-viewer/web/node_modules/
+tools/pi-viewer/web/dist/
+tools/pi-viewer/server/.venv/
+tools/pi-viewer/server/uv.lock
+
 # ===========================
 # Python & Backend
 # ===========================
@@ -20,6 +33,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!frontend/src/lib/
 lib64/
 parts/
 sdist/
@@ -546,6 +560,7 @@ cache/
 !pnpm-lock.yaml
 !Pipfile.lock
 !poetry.lock
+!requirements.lock
 !composer.lock
 
 # ===========================

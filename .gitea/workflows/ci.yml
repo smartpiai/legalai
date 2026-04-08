@@ -4,51 +4,201 @@ on:
   push:
     branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 jobs:
+  # S3-013 — Backend test suite with coverage (IT-CI-01, IT-CI-02)
   test-backend:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    - name: Install dependencies
-      run: |
-        cd backend
-        pip install -r requirements.txt
-        pip install pytest pytest-cov
-    - name: Run tests
-      run: |
-        cd backend
-        pytest
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.lock
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.lock ]; then pip install -r requirements.lock; else pip install -r requirements.txt; fi
+          pip install pytest pytest-cov
+      - name: Run pytest with coverage
+        run: pytest --cov=app --cov-report=xml --cov-report=term --junitxml=pytest-report.xml
+      - name: Upload backend coverage
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: backend-coverage
+          path: |
+            backend/coverage.xml
+            backend/pytest-report.xml
 
+  # S3-014 — Frontend test suite with coverage (IT-CI-03, IT-CI-04)
   test-frontend:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
-    - uses: actions/checkout@v3
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-    - name: Install dependencies
-      run: |
-        cd frontend
-        npm ci
-    - name: Run tests
-      run: |
-        cd frontend
-        npm test
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Run vitest with coverage
+        run: npm run test -- --coverage --reporter=default --reporter=junit --outputFile=vitest-report.xml
+      - name: Upload frontend coverage
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-coverage
+          path: |
+            frontend/coverage
+            frontend/vitest-report.xml
 
-  build:
-    needs: [test-backend, test-frontend]
+  # S3-015 — Backend lint (ruff) + type check (mypy) (IT-CI-05, IT-CI-06)
+  lint-backend:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: backend
     steps:
-    - uses: actions/checkout@v3
-    - name: Build and push Docker images
-      run: |
-        docker-compose build
-        # Add Docker Hub push commands here
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.lock
+      - name: Install lint tooling
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.lock ]; then pip install -r requirements.lock; else pip install -r requirements.txt; fi
+          pip install ruff mypy
+      - name: Ruff
+        run: ruff check .
+      - name: Mypy
+        run: mypy app
+
+  # S3-016 — Frontend lint (eslint) + type check (tsc) (IT-CI-07, IT-CI-08)
+  lint-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: ESLint
+        run: npm run lint
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+  # S3-017 — Security audit: pip-audit + npm audit, fail on high/critical (IT-CI-09, IT-CI-10, IT-CI-11)
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pip-audit
+        run: python -m pip install --upgrade pip pip-audit
+      - name: pip-audit (backend)
+        working-directory: backend
+        run: |
+          if [ -f requirements.lock ]; then
+            pip-audit -r requirements.lock --strict
+          else
+            pip-audit -r requirements.txt --strict
+          fi
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - name: npm audit (frontend)
+        working-directory: frontend
+        run: |
+          npm ci --ignore-scripts
+          npm audit --audit-level=high
+
+  # S3-018 — Docker compose build validation (IT-CI-12, IT-CI-13)
+  build:
+    needs:
+      - test-backend
+      - test-frontend
+      - lint-backend
+      - lint-frontend
+      - security-audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Validate compose file
+        run: docker compose config -q
+      - name: Build images
+        run: |
+          START=$(date +%s)
+          docker compose build
+          END=$(date +%s)
+          echo "BUILD_DURATION_SECONDS=$((END-START))" >> $GITHUB_ENV
+      - name: Record build duration artifact
+        run: |
+          mkdir -p build-metrics
+          echo "{\"build_duration_seconds\": ${BUILD_DURATION_SECONDS:-0}}" > build-metrics/build.json
+      - uses: actions/upload-artifact@v3
+        with:
+          name: build-metrics
+          path: build-metrics/
+
+  # S3-019 — Baseline metrics recording (main branch merges only) (IT-CI-14, IT-CI-15, IT-CI-16)
+  baseline-record:
+    needs:
+      - build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download backend coverage
+        uses: actions/download-artifact@v3
+        with:
+          name: backend-coverage
+          path: artifacts/backend
+      - name: Download frontend coverage
+        uses: actions/download-artifact@v3
+        with:
+          name: frontend-coverage
+          path: artifacts/frontend
+      - name: Download build metrics
+        uses: actions/download-artifact@v3
+        with:
+          name: build-metrics
+          path: artifacts/build
+      - name: Record baseline metrics
+        run: |
+          chmod +x scripts/record-baseline.sh
+          scripts/record-baseline.sh artifacts baseline.json
+      - name: Upload baseline artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: baseline-metrics
+          path: baseline.json

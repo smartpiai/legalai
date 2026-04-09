@@ -39,13 +39,36 @@ create-brd:
       Previous step output:
       $INPUT
 
-# Create a Tech Spec: scout code + PRD, then draft, then review
+# Create a Tech Spec: scout context → pre-flight type grep → draft → review
 create-tech-spec:
   - agent: scout
     prompt: >
       Read the PRD and any ADRs for context. Scan the relevant source code
       files that will be modified. Report: PRD requirements, existing code
       patterns, ADR decisions, and upstream document status.
+      Original request: $ORIGINAL
+
+  # ── Pre-flight type/identifier verification (Track C, PR FU) ──
+  # Added after FU-1 post-mortem: the original Tech Spec for pgvector
+  # assumed tenants.id / documents.id were UUID columns; they were
+  # actually Integer. This step exists to catch that class of error at
+  # the design stage rather than at alembic upgrade time.
+  - agent: scout
+    prompt: >
+      Pre-flight verification. From the context above, extract every
+      foreign key, referenced table/column, referenced function, flag,
+      and enum value the Tech Spec will rely on. For each one, run a
+      grep/glob against the repository and report:
+        - the type (UUID vs Integer, async vs sync, nullable, etc.)
+        - the file:line where it is defined
+        - whether it matches the spec's assumptions
+      If any assumption is wrong, report a blocking finding so the
+      tech-lead step either amends the spec or files a migration task
+      BEFORE the spec is written. Do NOT write the spec yourself.
+
+      Scout context:
+      $INPUT
+
       Original request: $ORIGINAL
 
   - agent: tech-lead
@@ -96,6 +119,84 @@ create-sec-review:
       uses L x I matrix, AI/LLM section covers all 7 threat categories,
       compliance mapping has specific control IDs, pen testing is scheduled
       if risk is High/Critical.
+
+      Previous step output:
+      $INPUT
+
+# Create a Migration Guide: scout current state → SRE drafts → review
+# Added in Track C (PR FU) — previously the only way to author a Mig
+# Guide was via direct agent dispatch to the SRE, which skipped the
+# scout and review gates.
+create-mig-guide:
+  - agent: scout
+    prompt: >
+      Scan the repository for all state relevant to this migration: the
+      current and target versions of the component (compose files,
+      requirements, pyproject, alembic head), any existing Mig Guides
+      for adjacent components, the Tech Spec / ADR that authorized the
+      change, and any runbook sections that will need to be updated in
+      lockstep. Report file paths and line numbers for each finding.
+      Original request: $ORIGINAL
+
+  - agent: sre
+    prompt: >
+      Using the scout's findings, create a Mig Guide using the
+      write-mig-guide skill. Follow docs/templates/MIG_GUIDE_TEMPLATE.md.
+      The guide MUST include: pre-flight checks, the migration steps
+      themselves, rollback procedure, validation queries/commands, and
+      an explicit "known unknowns" section. Anchor every step to a
+      concrete command or file path — no hand-wave steps.
+
+      Scout findings:
+      $INPUT
+
+      Original request: $ORIGINAL
+
+  - agent: doc-reviewer
+    prompt: >
+      Review the Mig Guide for completeness. Verify: pre-flight checks
+      exist, every step is executable (copy-paste or single-command),
+      rollback is tested or explicitly marked untested, validation
+      queries produce deterministic output, and the downgrade path is
+      honest about data-loss risk.
+
+      Previous step output:
+      $INPUT
+
+# Create a Runbook: scout incident surface → SRE drafts → review
+# Added in Track C (PR FU) — previously the only way to author a
+# Runbook was via direct agent dispatch to the SRE.
+create-runbook:
+  - agent: scout
+    prompt: >
+      Scan the repository for the operational surface this runbook will
+      cover: health endpoints, metrics exposed, dashboards referenced,
+      alert rules, on-call rotation hooks, and any existing runbooks
+      for adjacent services. Report file paths, alert names, metric
+      names, and dashboard URLs verbatim so the SRE can reference them
+      without paraphrasing.
+      Original request: $ORIGINAL
+
+  - agent: sre
+    prompt: >
+      Using the scout's findings, create a Runbook using the
+      write-runbook skill. Follow docs/templates/RUNBOOK_TEMPLATE.md.
+      Each symptom section MUST have: a concrete detection signal
+      (alert or metric), a diagnosis procedure, a mitigation path, an
+      escalation path, and a post-incident checklist. No "check the
+      logs" without a specific log query.
+
+      Scout findings:
+      $INPUT
+
+      Original request: $ORIGINAL
+
+  - agent: doc-reviewer
+    prompt: >
+      Review the Runbook for completeness. Verify: every symptom has a
+      detection signal, every mitigation is executable by on-call
+      without author presence, escalation contacts exist, and the
+      post-incident checklist maps to the incident-response policy.
 
       Previous step output:
       $INPUT

@@ -1,0 +1,17 @@
+[project]
+name = "pi-viewer-server"
+version = "0.1.0"
+description = "Local viewer/editor for .pi/ runtime state"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "ruamel.yaml>=0.18",
+    "python-frontmatter>=1.1",
+    "watchfiles>=0.21",
+    "pathspec>=0.12",
+    "pyyaml>=6",
+]
+
+[tool.uv]
+package = false

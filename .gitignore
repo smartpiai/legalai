@@ -6,6 +6,11 @@
 
 # Pi org runtime — ephemeral session traces (sprint state stays committed)
 .pi/state/sessions/
+
+# Launch script ephemeral state
+.machine_ip
+.app_url
+.api_url
 .pi/node_modules/
 
 # pi-viewer local tool
@@ -34,6 +39,7 @@ eggs/
 .eggs/
 lib/
 !frontend/src/lib/
+!tools/pi-viewer/web/src/lib/
 lib64/
 parts/
 sdist/
@@ -171,6 +177,8 @@ frontend/.eslintcache
 checkpoint/
 checkpoints/
 models/
+!backend/app/models/
+!backend/app/models/**
 saved_models/
 ml-services/*/models/
 ml-services/*/checkpoints/

@@ -14,8 +14,28 @@ import numpy as np
 
 import openai
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, FieldCondition, Range
+from qdrant_client.models import (
+    Distance,
+    VectorParams,
+    PointStruct,
+    Filter,
+    FieldCondition,
+    MatchValue,
+    Range,
+    SparseVector,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.vector_store import (
+    DENSE_VECTOR_NAME,
+    DENSE_VECTOR_SIZE,
+    SPARSE_VECTOR_NAME,
+    InvalidSparseVector,
+    _validate_sparse,
+    build_collection_name,
+    build_named_vectors_config,
+    build_sparse_vectors_config,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -535,17 +555,22 @@ class VectorSearchService:
     async def create_collection(
         self,
         collection_name: str,
-        vector_size: int = 1536,
-        distance: Distance = Distance.COSINE
+        vector_size: int = DENSE_VECTOR_SIZE,
+        distance: Distance = Distance.COSINE,
     ):
-        """Create a new collection in Qdrant."""
+        """Create a new collection in Qdrant using named-vector layout.
+
+        Per ID Spec 1.4.3, collections use ``vectors_config={"dense": ...}``
+        (named vectors) and reserve a ``sparse_vectors_config`` slot that
+        PR 1.4.4 will populate. No ``client.search()`` call sites remain.
+        """
         try:
             self.client.create_collection(
                 collection_name=collection_name,
-                vectors_config=VectorParams(
-                    size=vector_size,
-                    distance=distance
-                )
+                vectors_config=build_named_vectors_config(
+                    vector_size=vector_size, distance=distance
+                ),
+                sparse_vectors_config=build_sparse_vectors_config(),
             )
             logger.info(f"Created collection: {collection_name}")
         except Exception as e:
@@ -564,12 +589,17 @@ class VectorSearchService:
         
         points = []
         for i, (embedding, meta) in enumerate(zip(embeddings, metadata)):
+            if "tenant_id" not in meta:
+                raise ValueError(
+                    "Missing mandatory 'tenant_id' in payload metadata (ID Spec §3.3)"
+                )
             point_id = f"{meta.get('document_id', 0)}_{meta.get('chunk_index', i)}"
-            
+
             points.append(PointStruct(
                 id=point_id,
-                vector=embedding.tolist(),
-                payload=meta
+                # Named-vector form: Qdrant 1.12 named vectors API.
+                vector={DENSE_VECTOR_NAME: embedding.tolist()},
+                payload=meta,
             ))
         
         try:
@@ -586,47 +616,53 @@ class VectorSearchService:
         self,
         collection_name: str,
         query_vector: np.ndarray,
+        tenant_id: Union[int, str],
         limit: int = 10,
         score_threshold: float = 0.7,
-        filters: Optional[Dict[str, Any]] = None
+        filters: Optional[Dict[str, Any]] = None,
     ) -> List[SearchResult]:
-        """Search for similar vectors."""
+        """Search for similar vectors on the ``dense`` named channel.
+
+        Uses ``client.query_points`` (qdrant-client 1.12 API) — the
+        deprecated ``client.search`` is no longer called. A mandatory
+        ``tenant_id`` filter is always AND-merged (ID Spec §3.3); callers
+        cannot bypass it or supply their own ``tenant_id`` key in ``filters``.
+        """
+        if tenant_id is None:
+            raise ValueError("tenant_id is mandatory for vector search (ID Spec §3.3)")
         try:
-            # Build filter if provided
-            search_filter = None
+            # Mandatory tenant condition first.
+            conditions: List[FieldCondition] = [
+                FieldCondition(key="tenant_id", match=MatchValue(value=tenant_id)),
+            ]
             if filters:
-                conditions = []
+                if "tenant_id" in filters:
+                    raise ValueError(
+                        "Caller filters must not reference reserved key 'tenant_id'"
+                    )
                 for key, value in filters.items():
                     if isinstance(value, (list, tuple)):
-                        # IN condition
-                        conditions.append(FieldCondition(
-                            key=key,
-                            match={"any": value}
-                        ))
+                        conditions.append(FieldCondition(key=key, match={"any": list(value)}))
                     elif isinstance(value, dict) and ("gte" in value or "lte" in value):
-                        # Range condition
-                        conditions.append(FieldCondition(
-                            key=key,
-                            range=Range(**value)
-                        ))
+                        conditions.append(FieldCondition(key=key, range=Range(**value)))
                     else:
-                        # Exact match
-                        conditions.append(FieldCondition(
-                            key=key,
-                            match={"value": value}
-                        ))
-                
-                if conditions:
-                    search_filter = Filter(must=conditions)
-            
-            results = self.client.search(
+                        conditions.append(
+                            FieldCondition(key=key, match=MatchValue(value=value))
+                        )
+
+            search_filter = Filter(must=conditions)
+
+            response = self.client.query_points(
                 collection_name=collection_name,
-                query_vector=query_vector.tolist(),
+                query=query_vector.tolist(),
+                using=DENSE_VECTOR_NAME,
                 limit=limit,
                 score_threshold=score_threshold,
-                query_filter=search_filter
+                query_filter=search_filter,
+                with_payload=True,
             )
-            
+            results = getattr(response, "points", response)
+
             search_results = []
             for result in results:
                 search_results.append(SearchResult(
@@ -641,22 +677,136 @@ class VectorSearchService:
             logger.error(f"Search failed in {collection_name}: {e}")
             raise
     
+    async def upsert_with_sparse(
+        self,
+        collection_name: str,
+        embeddings: List[np.ndarray],
+        sparse_vectors: List[Dict[str, List[Any]]],
+        metadata: List[Dict[str, Any]],
+    ) -> None:
+        """Upsert points carrying both dense and sparse named vectors.
+
+        Sparse entries are validated per ID Spec §6 and raise
+        :class:`InvalidSparseVector` on violation.
+        """
+        if not (len(embeddings) == len(sparse_vectors) == len(metadata)):
+            raise ValueError(
+                "embeddings, sparse_vectors and metadata must be the same length"
+            )
+
+        points: List[PointStruct] = []
+        for i, (dense, sparse, meta) in enumerate(
+            zip(embeddings, sparse_vectors, metadata)
+        ):
+            if "tenant_id" not in meta:
+                raise ValueError(
+                    "Missing mandatory 'tenant_id' in payload metadata (ID Spec §3.3)"
+                )
+            sv = _validate_sparse(sparse["indices"], sparse["values"])
+            point_id = f"{meta.get('document_id', 0)}_{meta.get('chunk_index', i)}"
+            points.append(
+                PointStruct(
+                    id=point_id,
+                    vector={
+                        DENSE_VECTOR_NAME: dense.tolist(),
+                        SPARSE_VECTOR_NAME: sv,
+                    },
+                    payload=meta,
+                )
+            )
+
+        try:
+            self.client.upsert(collection_name=collection_name, points=points)
+            logger.info(
+                f"Upserted {len(points)} dense+sparse points to {collection_name}"
+            )
+        except Exception as e:
+            logger.error(f"Failed to upsert dense+sparse to {collection_name}: {e}")
+            raise
+
+    async def search_sparse(
+        self,
+        collection_name: str,
+        query_indices: List[int],
+        query_values: List[float],
+        tenant_id: Union[int, str],
+        limit: int = 10,
+        score_threshold: Optional[float] = None,
+    ) -> List[SearchResult]:
+        """Sparse search on the ``sparse`` named channel with tenant filter."""
+        if tenant_id is None:
+            raise ValueError("tenant_id is mandatory for vector search (ID Spec §3.3)")
+        sv = _validate_sparse(query_indices, query_values)
+        tenant_filter = Filter(
+            must=[FieldCondition(key="tenant_id", match=MatchValue(value=tenant_id))]
+        )
+        response = self.client.query_points(
+            collection_name=collection_name,
+            query=sv,
+            using=SPARSE_VECTOR_NAME,
+            limit=limit,
+            score_threshold=score_threshold,
+            query_filter=tenant_filter,
+            with_payload=True,
+        )
+        points = getattr(response, "points", response)
+        return [
+            SearchResult(score=p.score, metadata=p.payload, chunk_id=str(p.id))
+            for p in points
+        ]
+
     async def hybrid_search(
         self,
         collection_name: str,
         query_vector: np.ndarray,
-        query_text: str,
+        tenant_id: Union[int, str],
+        query_sparse_indices: Optional[List[int]] = None,
+        query_sparse_values: Optional[List[float]] = None,
         limit: int = 10,
-        hybrid_weight: float = 0.7
+        rrf_k: int = 60,
     ) -> List[SearchResult]:
-        """Perform hybrid search combining semantic and keyword search."""
-        # For now, implement as semantic search
-        # In a full implementation, this would combine with full-text search
-        return await self.search_similar(
+        """Dense + sparse hybrid search via Reciprocal Rank Fusion.
+
+        If no sparse query is supplied, degrades to dense-only for
+        call-site compatibility. Tenant filtering is enforced on both legs.
+        """
+        dense_hits = await self.search_similar(
             collection_name=collection_name,
             query_vector=query_vector,
-            limit=limit
+            tenant_id=tenant_id,
+            limit=limit * 2,
+            score_threshold=0.0,
         )
+        if query_sparse_indices is None or query_sparse_values is None:
+            return dense_hits[:limit]
+
+        sparse_hits = await self.search_sparse(
+            collection_name=collection_name,
+            query_indices=query_sparse_indices,
+            query_values=query_sparse_values,
+            tenant_id=tenant_id,
+            limit=limit * 2,
+        )
+
+        fused: Dict[str, Dict[str, Any]] = {}
+        for rank, hit in enumerate(dense_hits):
+            key = hit.chunk_id or str(id(hit))
+            entry = fused.setdefault(
+                key, {"score": 0.0, "metadata": hit.metadata, "chunk_id": hit.chunk_id}
+            )
+            entry["score"] += 1.0 / (rrf_k + rank + 1)
+        for rank, hit in enumerate(sparse_hits):
+            key = hit.chunk_id or str(id(hit))
+            entry = fused.setdefault(
+                key, {"score": 0.0, "metadata": hit.metadata, "chunk_id": hit.chunk_id}
+            )
+            entry["score"] += 1.0 / (rrf_k + rank + 1)
+
+        ranked = sorted(fused.values(), key=lambda e: e["score"], reverse=True)
+        return [
+            SearchResult(score=e["score"], metadata=e["metadata"], chunk_id=e["chunk_id"])
+            for e in ranked[:limit]
+        ]
     
     async def delete_document_embeddings(
         self,
@@ -735,8 +885,10 @@ class RAGPipeline:
                 }
                 metadata_list.append(meta)
             
-            # Store in vector database
-            collection_name = f"tenant_{document.tenant_id}"
+            # Store in vector database. Collection naming follows ID Spec §3.1:
+            # {env}__legalai__document_chunks__v2 (tenant-scoped via payload,
+            # NOT one collection per tenant).
+            collection_name = build_collection_name("document_chunks")
             await self.vector_service.upsert_embeddings(
                 collection_name=collection_name,
                 embeddings=embeddings,
@@ -773,13 +925,14 @@ class RAGPipeline:
         query_embedding = query_embeddings[0]
         
         # Search vector database
-        collection_name = f"tenant_{query.tenant_id}"
+        collection_name = build_collection_name("document_chunks")
         search_results = await self.vector_service.search_similar(
             collection_name=collection_name,
             query_vector=query_embedding,
+            tenant_id=query.tenant_id,
             limit=query.limit,
             score_threshold=query.score_threshold,
-            filters=query.filters
+            filters=query.filters,
         )
         
         processing_time = (datetime.now() - start_time).total_seconds()

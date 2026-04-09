@@ -11,6 +11,7 @@ import logging
 from fastapi import HTTPException, status, Security, Depends
 from fastapi.security import APIKeyHeader, APIKeyQuery
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, JSON
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from sqlalchemy.orm import relationship
@@ -37,7 +38,7 @@ class APIKey(Base):
     
     # Ownership
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
+    tenant_id = Column(PG_UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
     
     # Permissions and scopes
     scopes = Column(JSON, default=list)  # List of allowed scopes

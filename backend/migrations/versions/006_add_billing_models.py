@@ -23,7 +23,7 @@ def upgrade() -> None:
     op.create_table(
         'tenant_subscriptions',
         sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('tenant_id', sa.Integer(), nullable=False),
+        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('plan', sa.Enum('STARTER', 'PROFESSIONAL', 'ENTERPRISE', 'CUSTOM', name='billingplan'), nullable=False),
         sa.Column('status', sa.Enum('ACTIVE', 'TRIAL', 'PAST_DUE', 'SUSPENDED', 'CANCELLED', name='paymentstatus'), nullable=False),
         sa.Column('billing_email', sa.String(255), nullable=True),
@@ -52,7 +52,7 @@ def upgrade() -> None:
     op.create_table(
         'billing_events',
         sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('tenant_id', sa.Integer(), nullable=False),
+        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=True),
         sa.Column('event_type', sa.String(50), nullable=False),
         sa.Column('event_name', sa.String(255), nullable=False),
@@ -79,7 +79,7 @@ def upgrade() -> None:
     op.create_table(
         'resource_usage',
         sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('tenant_id', sa.Integer(), nullable=False),
+        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('period_start', sa.DateTime(), nullable=False),
         sa.Column('period_end', sa.DateTime(), nullable=False),
         sa.Column('storage_gb', sa.Float(), nullable=True, default=0.0),
@@ -102,7 +102,7 @@ def upgrade() -> None:
     op.create_table(
         'invoices',
         sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('tenant_id', sa.Integer(), nullable=False),
+        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('invoice_number', sa.String(50), nullable=False),
         sa.Column('status', sa.String(20), nullable=False, default='draft'),
         sa.Column('subtotal', sa.Float(), nullable=True, default=0.0),

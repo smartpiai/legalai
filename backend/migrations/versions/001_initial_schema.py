@@ -1,9 +1,15 @@
 """Initial database schema
 
 Revision ID: 001
-Revises: 
+Revises:
 Create Date: 2024-01-01 00:00:00.000000
 
+PR FU-1 (2026-04-08): tenants.id and documents.id are UUID (PG ``uuid``)
+rather than the original Integer sequences. The ``gen_random_uuid()``
+server default requires the ``pgcrypto`` extension, created below before
+any dependent table. All downstream FK columns referencing tenants.id or
+documents.id have been switched to UUID in this file and in 005-008, 010.
+See docs/phase-1/1.2.1_tech-spec_pgvector-schema.md §FU-1 amendment.
 """
 from typing import Sequence, Union
 from alembic import op
@@ -18,9 +24,18 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # pgcrypto provides gen_random_uuid(); pgvector (migration 010) relies on
+    # it too, so creating it here keeps the dependency local to migration 001.
+    op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto")
+
     # Create tenants table
     op.create_table('tenants',
-        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column(
+            'id',
+            postgresql.UUID(as_uuid=True),
+            nullable=False,
+            server_default=sa.text('gen_random_uuid()'),
+        ),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.Column('updated_at', sa.DateTime(), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),
@@ -46,7 +61,7 @@ def upgrade() -> None:
         sa.Column('avatar_url', sa.Text(), nullable=True),
         sa.Column('last_login', sa.DateTime(), nullable=True),
         sa.Column('email_verified', sa.Boolean(), nullable=False),
-        sa.Column('tenant_id', sa.Integer(), nullable=False),
+        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id')
     )
@@ -64,7 +79,7 @@ def upgrade() -> None:
         sa.Column('content', sa.Text(), nullable=True),
         sa.Column('status', sa.String(length=50), nullable=False),
         sa.Column('contract_number', sa.String(length=100), nullable=True),
-        sa.Column('tenant_id', sa.Integer(), nullable=False),
+        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id')
     )
@@ -79,7 +94,7 @@ def upgrade() -> None:
         sa.Column('name', sa.String(length=100), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
         sa.Column('permissions', sa.JSON(), nullable=False),
-        sa.Column('tenant_id', sa.Integer(), nullable=True),
+        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id')
     )
@@ -101,7 +116,7 @@ def upgrade() -> None:
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=True),
-        sa.Column('tenant_id', sa.Integer(), nullable=True),
+        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('action', sa.String(length=100), nullable=False),
         sa.Column('resource_type', sa.String(length=100), nullable=False),
         sa.Column('resource_id', sa.String(length=100), nullable=True),
@@ -118,7 +133,12 @@ def upgrade() -> None:
     
     # Create documents table
     op.create_table('documents',
-        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column(
+            'id',
+            postgresql.UUID(as_uuid=True),
+            nullable=False,
+            server_default=sa.text('gen_random_uuid()'),
+        ),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.Column('updated_at', sa.DateTime(), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),
@@ -127,7 +147,7 @@ def upgrade() -> None:
         sa.Column('mime_type', sa.String(length=100), nullable=False),
         sa.Column('checksum', sa.String(length=64), nullable=True),
         sa.Column('contract_id', sa.Integer(), nullable=True),
-        sa.Column('tenant_id', sa.Integer(), nullable=False),
+        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('uploaded_by', sa.Integer(), nullable=True),
         sa.Column('document_metadata', sa.JSON(), nullable=True),
         sa.ForeignKeyConstraint(['contract_id'], ['contracts.id'], ondelete='CASCADE'),

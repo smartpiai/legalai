@@ -21,7 +21,8 @@ dependencies = [
     "alembic==1.13.1",
     "redis==5.0.1",
     "neo4j==5.16.0",
-    "qdrant-client==1.7.0",
+    "qdrant-client~=1.12.1",
+    "pgvector~=0.3.6",
 
     # ML/AI
     "torch==2.1.2",
@@ -93,6 +94,11 @@ include = ["app*"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "-ra -q"
+markers = [
+    "fault_injection: fault-injection tests (nightly P2)",
+    "p1: P1 priority (every PR)",
+    "p2: P2 priority (nightly)",
+]
 
 [tool.ruff]
 target-version = "py311"

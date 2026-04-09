@@ -1,0 +1,35 @@
+# Task type: docker-service
+# Use for: adding/changing a service in docker-compose or its Dockerfile.
+name: docker-service
+description: >
+  One unit of compose-level work — adding a service, adjusting a healthcheck,
+  pinning an image version, exposing a port per the ID Spec port map.
+
+defaults:
+  workstream: docker
+  assignee: devops
+  chain: build-docker-service
+  gate: pre-deploy
+  priority: p2
+  touches:
+    - docker-compose.yml
+    - docker-compose.*.yml
+    - docker/**
+    - Dockerfile
+    - backend/Dockerfile
+    - frontend/Dockerfile
+
+acceptance:
+  shape: >
+    Must reference at least one Test Spec case ID in the TS-DOCKER-* range.
+    Service must come up clean with `docker compose up -d <service>` and
+    pass its healthcheck within the perf-spec startup budget.
+  required_checks:
+    - service starts within Perf Spec startup budget (< 45s default)
+    - healthcheck reports healthy
+    - exposed ports match ID Spec port map
+    - security-auditor signs off on exposed surface
+
+notes: |
+  Healthcheck is mandatory for any new service. If the upstream image lacks one,
+  add a custom one in the compose file.

@@ -1,0 +1,133 @@
+id: 2
+name: Phase 1 Prep
+goal: Author all required Phase 1 documents to clear design and pre-merge gates.
+startDate: 2026-04-07
+endDate: 2026-04-21
+roadmapPhases:
+  - "1"
+status: active
+backlog:
+  - id: S2-001
+    title: Create Phase 1 PRD
+    type: doc
+    docType: prd
+    phase: "1"
+    assignee: pm
+    gate: kickoff
+    status: done
+    priority: p1
+    dependsOn: []
+    completedAt: 2026-04-07T22:07:16.481000Z
+    output: docs/phase-1/1.0_prd_infrastructure-upgrades.md
+  - id: S2-002
+    title: Create Phase 1 ADR
+    type: doc
+    docType: adr
+    phase: "1"
+    assignee: tech-lead
+    gate: kickoff
+    status: done
+    priority: p1
+    dependsOn: []
+    completedAt: 2026-04-07T22:07:16.490000Z
+    output: docs/phase-1/1.3.1_adr_valkey-vs-redis.md
+  - id: S2-003
+    title: Create Phase 1 Tech Spec
+    type: doc
+    docType: tech-spec
+    phase: "1"
+    assignee: tech-lead
+    chain: create-tech-spec
+    gate: design
+    status: done
+    priority: p1
+    dependsOn:
+      - S2-001
+  - id: S2-004
+    title: Create Phase 1 ID Spec
+    type: doc
+    docType: id-spec
+    phase: "1"
+    assignee: tech-lead
+    gate: pre-merge
+    status: done
+    priority: p2
+    dependsOn:
+      - S2-003
+  - id: S2-005
+    title: Create Phase 1 Test Spec
+    type: doc
+    docType: test-spec
+    phase: "1"
+    assignee: qa
+    gate: pre-merge
+    status: done
+    priority: p2
+    dependsOn:
+      - S2-003
+    completedAt: 2026-04-07T22:20:02.595000Z
+    output: docs/phase-1/1.0_test-spec_infrastructure-upgrades.md
+  - id: S2-006
+    title: Create Phase 1 Sec Review
+    type: doc
+    docType: sec-review
+    phase: "1"
+    assignee: security
+    chain: create-sec-review
+    gate: pre-merge
+    status: done
+    priority: p2
+    dependsOn:
+      - S2-003
+  - id: S2-007
+    title: Create Phase 1 Dep Review
+    type: doc
+    docType: dep-review
+    phase: "1"
+    assignee: engineer
+    gate: pre-merge
+    status: done
+    priority: p2
+    dependsOn: []
+    completedAt: 2026-04-07T22:09:13.046000Z
+    output: docs/phase-1/1.0_dep-review_infrastructure-upgrades.md
+  - id: S2-008
+    title: Create Phase 1 Mig Guide
+    type: doc
+    docType: mig-guide
+    phase: "1"
+    assignee: sre
+    gate: pre-deploy
+    status: done
+    priority: p2
+    dependsOn:
+      - S2-003
+    completedAt: 2026-04-07T22:20:02.605000Z
+    output: docs/phase-1/1.0_mig-guide_infrastructure-upgrades.md
+  - id: S2-009
+    title: Create Phase 1 Runbook
+    type: doc
+    docType: runbook
+    phase: "1"
+    assignee: sre
+    gate: pre-deploy
+    status: done
+    priority: p2
+    dependsOn:
+      - S2-003
+      - S2-008
+    completedAt: 2026-04-07T22:23:12.369000Z
+    output: docs/phase-1/1.0_runbook_infrastructure-upgrades.md
+  - id: S2-010
+    title: Create Phase 1 Perf Spec
+    type: doc
+    docType: perf-spec
+    phase: "1"
+    assignee: sre
+    gate: pre-deploy
+    status: done
+    priority: p2
+    dependsOn:
+      - S2-003
+    completedAt: 2026-04-07T22:20:02.609000Z
+    output: docs/phase-1/1.0_perf-spec_infrastructure-upgrades.md

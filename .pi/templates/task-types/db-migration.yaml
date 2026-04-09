@@ -1,0 +1,32 @@
+# Task type: db-migration
+# Use for: schema or data migrations executed via Alembic.
+name: db-migration
+description: >
+  One Alembic revision — schema change, data backfill, or index rebuild.
+  Must be reversible unless explicitly justified in the task output.
+
+defaults:
+  workstream: migration
+  assignee: devops
+  chain: run-migration
+  gate: pre-deploy
+  priority: p1
+  touches:
+    - backend/alembic/versions/**
+    - backend/alembic/env.py
+    - backend/app/models/**
+
+acceptance:
+  shape: >
+    Must reference at least one Test Spec case ID in the TS-DB-* or
+    TS-MIGRATE-* range. Migration must run cleanly forward and backward
+    on a fresh database.
+  required_checks:
+    - `alembic upgrade head` succeeds on empty db
+    - `alembic downgrade -1` succeeds and is data-safe
+    - existing test suite passes against new schema
+    - tenant isolation preserved (RLS policies present where applicable)
+
+notes: |
+  One revision per task. If a logical change needs N revisions, split into
+  N tasks with explicit `dependsOn`.

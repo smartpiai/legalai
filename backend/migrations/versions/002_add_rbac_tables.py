@@ -131,47 +131,40 @@ def upgrade() -> None:
         ('User Manager', 'user-manager', 'Manage users', '[]'::json, NULL, true, NOW(), NOW())
     """)
     
-    # Assign permissions to default roles
+    # Assign permissions to default roles (one statement per execute —
+    # asyncpg does not support multiple commands in a single prepared statement).
     op.execute("""
-        -- System Administrator gets all permissions
         INSERT INTO role_permissions (role_id, permission_id)
-        SELECT r.id, p.id 
-        FROM roles r
-        CROSS JOIN permissions p
-        WHERE r.slug = 'system-admin';
-        
-        -- Tenant Administrator gets all non-tenant permissions
+        SELECT r.id, p.id
+        FROM roles r CROSS JOIN permissions p
+        WHERE r.slug = 'system-admin'
+    """)
+    op.execute("""
         INSERT INTO role_permissions (role_id, permission_id)
-        SELECT r.id, p.id 
-        FROM roles r
-        CROSS JOIN permissions p
-        WHERE r.slug = 'tenant-admin' 
-        AND p.resource != 'tenants';
-        
-        -- Contract Manager gets all contract and document permissions
+        SELECT r.id, p.id
+        FROM roles r CROSS JOIN permissions p
+        WHERE r.slug = 'tenant-admin' AND p.resource != 'tenants'
+    """)
+    op.execute("""
         INSERT INTO role_permissions (role_id, permission_id)
-        SELECT r.id, p.id 
-        FROM roles r
-        CROSS JOIN permissions p
-        WHERE r.slug = 'contract-manager' 
-        AND p.resource IN ('contracts', 'documents', 'templates');
-        
-        -- Contract Viewer gets read-only contract and document permissions
-        INSERT INTO role_permissions (role_id, permission_id)
-        SELECT r.id, p.id 
-        FROM roles r
-        CROSS JOIN permissions p
-        WHERE r.slug = 'contract-viewer' 
+        SELECT r.id, p.id
+        FROM roles r CROSS JOIN permissions p
+        WHERE r.slug = 'contract-manager'
         AND p.resource IN ('contracts', 'documents', 'templates')
-        AND p.action IN ('read', 'download');
-        
-        -- User Manager gets user management permissions
+    """)
+    op.execute("""
         INSERT INTO role_permissions (role_id, permission_id)
-        SELECT r.id, p.id 
-        FROM roles r
-        CROSS JOIN permissions p
-        WHERE r.slug = 'user-manager' 
-        AND p.resource = 'users';
+        SELECT r.id, p.id
+        FROM roles r CROSS JOIN permissions p
+        WHERE r.slug = 'contract-viewer'
+        AND p.resource IN ('contracts', 'documents', 'templates')
+        AND p.action IN ('read', 'download')
+    """)
+    op.execute("""
+        INSERT INTO role_permissions (role_id, permission_id)
+        SELECT r.id, p.id
+        FROM roles r CROSS JOIN permissions p
+        WHERE r.slug = 'user-manager' AND p.resource = 'users'
     """)
 
 

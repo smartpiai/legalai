@@ -60,7 +60,7 @@ print_info() {
 detect_machine_ip() {
     local detected_ip=""
     
-    print_status "Detecting machine IP address..."
+    print_status "Detecting machine IP address..." >&2
     
     # If IP was forced via command line, use that
     if [ -n "$FORCE_IP" ]; then
@@ -169,12 +169,12 @@ update_env_with_ip() {
         # Remove quotes if present
         current_cors=${current_cors#\"}
         current_cors=${current_cors%\"}
-        
+
         # Check if machine IP is already in CORS
         if [[ "$current_cors" != *"$machine_ip"* ]]; then
             # Add machine IP to CORS origins
             local new_cors="$current_cors,http://$machine_ip:3000,http://$machine_ip:8000"
-            sed -i "s|^BACKEND_CORS_ORIGINS=.*|BACKEND_CORS_ORIGINS=\"$new_cors\"|" "$ENV_FILE"
+            sed -i '' "s|^BACKEND_CORS_ORIGINS=.*|BACKEND_CORS_ORIGINS=\"$new_cors\"|" "$ENV_FILE"
             print_success "Updated CORS origins with machine IP"
         fi
     fi
@@ -182,12 +182,12 @@ update_env_with_ip() {
     # Update API base URL for frontend (if not localhost)
     if [ "$machine_ip" != "localhost" ]; then
         # Update VITE_API_BASE_URL to use the machine IP
-        sed -i "s|^VITE_API_BASE_URL=.*|VITE_API_BASE_URL=\"http://$machine_ip:8000\"|" "$ENV_FILE"
+        sed -i '' "s|^VITE_API_BASE_URL=.*|VITE_API_BASE_URL=\"http://$machine_ip:8000\"|" "$ENV_FILE"
         print_success "Updated frontend API base URL"
         
         # Update FRONTEND_URL and BACKEND_URL
-        sed -i "s|^FRONTEND_URL=.*|FRONTEND_URL=\"http://$machine_ip:3000\"|" "$ENV_FILE"
-        sed -i "s|^BACKEND_URL=.*|BACKEND_URL=\"http://$machine_ip:8000\"|" "$ENV_FILE"
+        sed -i '' "s|^FRONTEND_URL=.*|FRONTEND_URL=\"http://$machine_ip:3000\"|" "$ENV_FILE"
+        sed -i '' "s|^BACKEND_URL=.*|BACKEND_URL=\"http://$machine_ip:8000\"|" "$ENV_FILE"
         print_success "Updated frontend and backend URLs"
     fi
     

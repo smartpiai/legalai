@@ -171,6 +171,8 @@ frontend/.eslintcache
 checkpoint/
 checkpoints/
 models/
+!backend/app/models/
+!backend/app/models/**
 saved_models/
 ml-services/*/models/
 ml-services/*/checkpoints/

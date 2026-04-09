@@ -66,7 +66,8 @@ services:
 
   # Qdrant - Vector Database
   qdrant:
-    image: qdrant/qdrant:latest
+    # Multi-arch index digest resolved 2026-04-08 (PR FU-2).
+    image: ${QDRANT_IMAGE:-qdrant/qdrant:v1.12.6@sha256:89d9d35757eb57c62973c193c96b5b50ca73bbaff7fa282ef81f7fd155a3747d}
     container_name: legal-ai-qdrant-dev
     ports:
       - "${QDRANT_PORT}:6333"
@@ -102,6 +103,23 @@ services:
       timeout: 20s
       retries: 3
       start_period: 60s
+    restart: unless-stopped
+
+  # Valkey/Redis Prometheus exporter (PR FU-4)
+  # oliver006/redis_exporter is wire-compatible with Valkey; metric names
+  # remain `redis_*`. IT-VK-09 hits :9121/metrics. To use against the dev
+  # Valkey container once docker-compose.dev is upgraded, set
+  # REDIS_ADDR=redis://<valkey-service>:6379.
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    container_name: legal-ai-valkey-exporter-dev
+    command:
+      - "--redis.addr=redis://redis:6379"
+    ports:
+      - "9121:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   # ClamAV - Antivirus (Optional)

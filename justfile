@@ -180,3 +180,20 @@ fe-test:
 
 fe-build:
     cd frontend && npm run build
+
+# ── pi-viewer (local .pi/ web UI) ───────────────────────────
+# One-time install of server (uv) and web (npm) deps
+pi-ui-install:
+    cd tools/pi-viewer/server && uv sync
+    cd tools/pi-viewer/web && npm install
+
+# Start the API (port 7878) and the Vite dev server (port 5173).
+# Open http://127.0.0.1:5173
+pi-ui:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd tools/pi-viewer
+    uv --project server run uvicorn server.main:app --host 127.0.0.1 --port 7878 &
+    API_PID=$!
+    trap "kill $API_PID 2>/dev/null || true" EXIT
+    cd web && npm run dev

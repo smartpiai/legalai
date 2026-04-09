@@ -26,8 +26,13 @@ async def _event_stream():
                     rel = str(Path(path).relative_to(root))
                 except ValueError:
                     continue
-                # Skip noisy session writes
+                # Session writes trigger activity-feed invalidation but
+                # are demoted to a separate event type so the sprints /
+                # agents / docs views do not refresh on every session
+                # append. The web client's useLiveReload handles the
+                # two event types independently.
                 if rel.startswith(".pi/state/sessions/"):
+                    payload.append({"change": change.name, "path": rel, "feed": "activity"})
                     continue
                 if "/node_modules/" in rel or rel.endswith(".tmp"):
                     continue

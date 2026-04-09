@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .fs import repo_root
-from .routes import agents, docs, events, settings as settings_route, sprints, state
+from .routes import activity, agents, docs, events, settings as settings_route, sprints, state
 
 app = FastAPI(title="pi-viewer", version="0.1.0")
 
@@ -17,6 +17,7 @@ app.add_middleware(
 )
 
 app.include_router(sprints.router)
+app.include_router(activity.router)
 app.include_router(agents.router)
 app.include_router(docs.router)
 app.include_router(state.router)

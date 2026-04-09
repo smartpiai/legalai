@@ -34,6 +34,7 @@ eggs/
 .eggs/
 lib/
 !frontend/src/lib/
+!tools/pi-viewer/web/src/lib/
 lib64/
 parts/
 sdist/

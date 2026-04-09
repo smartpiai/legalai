@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 
 async function j<T>(p: string): Promise<T> {
   const r = await fetch(p);
@@ -12,7 +13,13 @@ type Session = { name: string; size: number; mtime: number };
 export default function StatePage() {
   const progress = useQuery({ queryKey: ["progress"], queryFn: () => j<any>("/api/state/progress") });
   const sessions = useQuery({ queryKey: ["sessions"], queryFn: () => j<Session[]>("/api/state/sessions") });
-  const [sel, setSel] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const [sel, setSel] = useState<string | null>(searchParams.get("session"));
+  // Sync from URL param when navigating from ActivityPage.
+  useEffect(() => {
+    const s = searchParams.get("session");
+    if (s) setSel(s);
+  }, [searchParams]);
   const sessionQ = useQuery({
     queryKey: ["session", sel],
     queryFn: () => j<any>(`/api/state/sessions/${sel}`),

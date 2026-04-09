@@ -1,8 +1,9 @@
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
-import { LayoutGrid, GitBranch, FileText, Activity, Settings } from "lucide-react";
+import { LayoutGrid, GitBranch, FileText, Activity, Settings, Zap } from "lucide-react";
 import SprintsPage from "./pages/SprintsPage";
 import { useLiveReload } from "./lib/useLiveReload";
 import AgentsPage from "./pages/AgentsPage";
+import ActivityPage from "./pages/ActivityPage";
 import DocsPage from "./pages/DocsPage";
 import StatePage from "./pages/StatePage";
 import SettingsPage from "./pages/SettingsPage";
@@ -10,6 +11,7 @@ import SettingsPage from "./pages/SettingsPage";
 const NAV = [
   { to: "/sprints", label: "Sprints", icon: LayoutGrid },
   { to: "/agents", label: "Agents", icon: GitBranch },
+  { to: "/activity", label: "Activity", icon: Zap },
   { to: "/docs", label: "Docs", icon: FileText },
   { to: "/state", label: "State", icon: Activity },
   { to: "/settings", label: "Settings", icon: Settings },
@@ -57,6 +59,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/sprints" replace />} />
           <Route path="/sprints" element={<SprintsPage />} />
           <Route path="/agents" element={<AgentsPage />} />
+          <Route path="/activity" element={<ActivityPage />} />
           <Route path="/docs" element={<DocsPage />} />
           <Route path="/state" element={<StatePage />} />
           <Route path="/settings" element={<SettingsPage />} />

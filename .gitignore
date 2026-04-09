@@ -6,6 +6,11 @@
 
 # Pi org runtime — ephemeral session traces (sprint state stays committed)
 .pi/state/sessions/
+
+# Launch script ephemeral state
+.machine_ip
+.app_url
+.api_url
 .pi/node_modules/
 
 # pi-viewer local tool

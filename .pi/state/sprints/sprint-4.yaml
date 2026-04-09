@@ -1,0 +1,497 @@
+id: 4
+name: Phase 1 Infrastructure Upgrades
+goal: Complete Phase 1 datastore upgrades (PG 17 + pgvector, Valkey, Qdrant
+  1.12+, Neo4j patch) including remaining docs and all implementation PRs
+startDate: 2026-04-09
+endDate: 2026-05-07
+roadmapPhases:
+  - "1"
+status: active
+backlog:
+  - id: S4-001
+    title: Phase 1 Mig Guide (phase-level)
+    type: doc
+    docType: mig-guide
+    phase: "1"
+    assignee: sre
+    chain: create-mig-guide
+    gate: pre-deploy
+    status: done
+    priority: p0
+    dependsOn: []
+    notes: Consolidates per-component migration procedures; defines PG pg_upgrade vs
+      dump/restore decision
+    completedAt: 2026-04-09T03:08:14.947Z
+    output: docs/phase-1/1.0_mig-guide_infrastructure-upgrades.md
+  - id: S4-002
+    title: Phase 1 Runbook (phase-level)
+    type: doc
+    docType: runbook
+    phase: "1"
+    assignee: sre
+    chain: create-runbook
+    gate: pre-deploy
+    status: done
+    priority: p0
+    dependsOn:
+      - S4-001
+    completedAt: 2026-04-09T03:12:02.338Z
+    output: docs/phase-1/1.0_runbook_infrastructure-upgrades.md
+  - id: S4-003
+    title: 1.2.1 Tech Spec — pgvector schema + index choice
+    type: doc
+    docType: tech-spec
+    phase: "1"
+    assignee: tech-lead
+    gate: design
+    status: done
+    priority: p0
+    dependsOn: []
+    notes: HNSW vs IVFFlat, dimension, tenant scoping
+    completedAt: 2026-04-09T03:08:14.958Z
+    output: docs/phase-1/1.2.1_tech-spec_pgvector-schema.md
+  - id: S4-004
+    title: 1.2.4 ID Spec — PgVectorRepository interface
+    type: doc
+    docType: id-spec
+    phase: "1"
+    assignee: engineer
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn:
+      - S4-003
+    completedAt: 2026-04-09T03:12:02.349Z
+    output: docs/phase-1/1.2.4_id-spec_pgvector-repository.md
+  - id: S4-005
+    title: 1.4.3 ID Spec — Qdrant named-vectors schema
+    type: doc
+    docType: id-spec
+    phase: "1"
+    assignee: tech-lead
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn: []
+    completedAt: 2026-04-09T03:08:14.966Z
+    output: docs/phase-1/1.4.3_id-spec_qdrant-named-vectors.md
+  - id: S4-006
+    title: 1.2.2 Dep Review — pgvector Python package
+    type: doc
+    docType: dep-review
+    phase: "1"
+    assignee: engineer
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn: []
+    completedAt: 2026-04-09T03:08:14.973Z
+    output: docs/phase-1/1.2.2_dep-review_pgvector.md
+  - id: S4-007
+    title: 1.4.1 Dep Review — qdrant-client 1.12+
+    type: doc
+    docType: dep-review
+    phase: "1"
+    assignee: engineer
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn: []
+    completedAt: 2026-04-09T03:08:14.980Z
+    output: docs/phase-1/1.4.1_dep-review_qdrant-client.md
+  - id: S4-008
+    title: 1.5.1 Dep Review — Neo4j image + driver
+    type: doc
+    docType: dep-review
+    phase: "1"
+    assignee: engineer
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn: []
+    completedAt: 2026-04-09T03:08:14.988Z
+    output: docs/phase-1/1.5.1_dep-review_neo4j.md
+  - id: S4-101
+    title: 1.5.1 Update Neo4j docker-compose image to latest 5.x patch
+    type: impl
+    workstream: infra
+    phase: "1"
+    assignee: sre
+    gate: pre-deploy
+    status: done
+    priority: p0
+    dependsOn:
+      - S4-008
+    touches:
+      - docker-compose.yml
+    acceptanceCriteria:
+      - IT-NJ-01
+      - IT-NJ-04
+    completedAt: 2026-04-09T03:12:02.357Z
+    output: docker-compose.yml neo4j pinned to 5.26-community@sha256
+  - id: S4-102
+    title: 1.5.2 Verify APOC + GDS plugin compatibility with new Neo4j
+    type: impl
+    workstream: infra
+    phase: "1"
+    assignee: engineer
+    gate: pre-merge
+    status: done
+    priority: p0
+    dependsOn:
+      - S4-101
+    touches:
+      - docker-compose.yml
+      - backend/app/services/graph_service.py
+    acceptanceCriteria:
+      - IT-NJ-02
+      - IT-NJ-03
+      - IT-NJ-05
+    completedAt: 2026-04-09T03:16:44.777Z
+    output: neo4j driver 5.26 + APOC/GDS env + integration test suite
+  - id: S4-111
+    title: 1.4.1 Bump qdrant-client to 1.12+
+    type: impl
+    workstream: backend
+    phase: "1"
+    assignee: engineer
+    gate: pre-merge
+    status: done
+    priority: p0
+    dependsOn:
+      - S4-007
+    touches:
+      - backend/pyproject.toml
+    completedAt: 2026-04-09T03:12:02.364Z
+    output: pyproject.toml + requirements.txt → qdrant-client 1.12.1; breakage
+      deferred to 1.4.3
+  - id: S4-112
+    title: 1.4.2 Update Qdrant docker-compose image to 1.12.x
+    type: impl
+    workstream: infra
+    phase: "1"
+    assignee: sre
+    gate: pre-deploy
+    status: done
+    priority: p0
+    dependsOn:
+      - S4-111
+      - S4-001
+    touches:
+      - docker-compose.yml
+    acceptanceCriteria:
+      - IT-QD-01
+      - IT-QD-03
+    completedAt: 2026-04-09T04:40:30.871Z
+    output: Qdrant v1.12.6 + 1.4.2 mig-guide. Digest pin tracked as follow-up (not
+      blocking).
+  - id: S4-113
+    title: 1.4.3 Refactor vector_store.py for named vectors
+    type: impl
+    workstream: backend
+    phase: "1"
+    assignee: engineer
+    gate: pre-merge
+    status: done
+    priority: p0
+    dependsOn:
+      - S4-112
+      - S4-005
+    touches:
+      - backend/app/services/vector_store.py
+    acceptanceCriteria:
+      - IT-QD-04
+      - IT-QD-06
+    completedAt: 2026-04-09T04:46:38.368Z
+    output: vector_store.py + embedding.py refactored for named vectors v2;
+      query_points API; tenant filter enforced; v1→v2 dual-read shim
+  - id: S4-114
+    title: 1.4.4 Add sparse vector support
+    type: impl
+    workstream: backend
+    phase: "1"
+    assignee: engineer
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn:
+      - S4-113
+    touches:
+      - backend/app/services/vector_store.py
+    acceptanceCriteria:
+      - IT-QD-05
+    completedAt: 2026-04-09T04:50:49.411Z
+    output: Sparse vectors wired (IDF), upsert_with_sparse, search_sparse,
+      hybrid_search RRF fusion, IT-QD-05 unit tests
+  - id: S4-115
+    title: 1.4.5 Qdrant integration tests
+    type: impl
+    workstream: backend
+    phase: "1"
+    assignee: qa
+    gate: pre-merge
+    status: done
+    priority: p0
+    dependsOn:
+      - S4-114
+    touches:
+      - tests/phase1/qdrant/
+    acceptanceCriteria:
+      - IT-QD-01
+      - IT-QD-02
+      - IT-QD-03
+      - IT-QD-04
+      - IT-QD-05
+      - IT-QD-06
+      - IT-QD-07
+      - RT-04
+    completedAt: 2026-04-09T04:53:34.955Z
+    output: tests/phase1/qdrant/ — 8 files covering IT-QD-01..07 + RT-04. RT-04
+      baseline file is a follow-up.
+  - id: S4-121
+    title: 1.1.1 Update docker-compose to PostgreSQL 17
+    type: impl
+    workstream: infra
+    phase: "1"
+    assignee: sre
+    gate: pre-deploy
+    status: done
+    priority: p0
+    dependsOn:
+      - S4-001
+    touches:
+      - docker-compose.yml
+    acceptanceCriteria:
+      - IT-PG-01
+      - IT-PG-02
+      - IT-PG-04
+      - IT-PG-05
+      - FI-01
+    completedAt: 2026-04-09T03:12:02.370Z
+    output: docker-compose.yml → pgvector/pgvector:pg17, new volume postgres_data_pg17
+  - id: S4-122
+    title: 1.1.2 Alembic migration replay on PG 17
+    type: impl
+    workstream: backend
+    phase: "1"
+    assignee: engineer
+    gate: pre-merge
+    status: done
+    priority: p0
+    dependsOn:
+      - S4-121
+    touches:
+      - backend/alembic/
+      - tests/phase1/postgres/test_alembic_replay.py
+    acceptanceCriteria:
+      - IT-PG-03
+      - RT-05
+    completedAt: 2026-04-09T03:16:44.794Z
+    output: tests/phase1/postgres/test_alembic_replay.py; migration audit found no
+      PG17 incompat
+  - id: S4-123
+    title: 1.1.3 Enable pg_stat_statements extension + config
+    type: impl
+    workstream: infra
+    phase: "1"
+    assignee: sre
+    gate: pre-deploy
+    status: done
+    priority: p1
+    dependsOn:
+      - S4-122
+    touches:
+      - docker-compose.yml
+      - backend/app/core/db.py
+    acceptanceCriteria:
+      - IT-PG-06
+      - IT-PG-07
+      - RT-06
+    completedAt: 2026-04-09T04:46:38.379Z
+    output: migration 009_enable_pg_stat_statements + compose command + monitoring
+      role with PUBLIC revoked
+  - id: S4-124
+    title: 1.1.4 Update CI matrix to PostgreSQL 17
+    type: impl
+    workstream: ci
+    phase: "1"
+    assignee: engineer
+    gate: pre-merge
+    status: done
+    priority: p1
+    dependsOn:
+      - S4-122
+    touches:
+      - .github/workflows/ci.yml
+    completedAt: 2026-04-09T04:46:38.390Z
+    output: ".github/workflows/ci.yml: PG17 primary + PG15 regression matrix;
+      TEST_PG17_ADMIN_URL wired"
+  - id: S4-131
+    title: "1.2.1 Alembic migration: vector extension + document_embeddings table"
+    type: impl
+    workstream: backend
+    phase: "1"
+    assignee: engineer
+    gate: pre-merge
+    status: done
+    priority: p0
+    dependsOn:
+      - S4-122
+      - S4-003
+    touches:
+      - backend/alembic/versions/
+    acceptanceCriteria:
+      - IT-PV-01
+      - IT-PV-02
+    completedAt: 2026-04-09T04:46:38.400Z
+    output: "migration 009_pgvector_document_embeddings (note: collides with 009
+      from S4-123 — needs rename to 010 in follow-up)"
+  - id: S4-132
+    title: 1.2.2 Add pgvector Python package
+    type: impl
+    workstream: backend
+    phase: "1"
+    assignee: engineer
+    gate: pre-merge
+    status: done
+    priority: p0
+    dependsOn:
+      - S4-006
+      - S4-131
+    touches:
+      - backend/pyproject.toml
+    completedAt: 2026-04-09T04:50:49.423Z
+    output: pgvector~=0.3.6 added; no conflicts; 009 collision flagged
+  - id: S4-133
+    title: 1.2.3 SQLAlchemy DocumentEmbedding model
+    type: impl
+    workstream: backend
+    phase: "1"
+    assignee: engineer
+    gate: pre-merge
+    status: done
+    priority: p0
+    dependsOn:
+      - S4-132
+    touches:
+      - backend/app/models/document_embedding.py
+    completedAt: 2026-04-09T04:54:33.044Z
+    output: app/models/{__init__,base,document_embedding}.py created; FK columns
+      only; relationships deferred
+  - id: S4-134
+    title: 1.2.4 PgVectorRepository implementation
+    type: impl
+    workstream: backend
+    phase: "1"
+    assignee: engineer
+    gate: pre-merge
+    status: done
+    priority: p0
+    dependsOn:
+      - S4-133
+      - S4-004
+    touches:
+      - backend/app/repositories/pgvector_repository.py
+    acceptanceCriteria:
+      - IT-PV-03
+      - IT-PV-04
+      - IT-PV-05
+      - IT-PV-06
+    completedAt: 2026-04-09T04:55:58.367Z
+    output: backend/app/repositories/pgvector_repository.py with all 4 methods +
+      DTOs + exception hierarchy
+  - id: S4-135
+    title: 1.2.5 pgvector integration test suite
+    type: impl
+    workstream: backend
+    phase: "1"
+    assignee: qa
+    gate: pre-merge
+    status: done
+    priority: p0
+    dependsOn:
+      - S4-134
+    touches:
+      - tests/phase1/postgres/
+    acceptanceCriteria:
+      - IT-PV-01
+      - IT-PV-02
+      - IT-PV-03
+      - IT-PV-04
+      - IT-PV-05
+      - IT-PV-06
+      - EC-03
+      - EC-07
+    completedAt: 2026-04-09T05:09:10.182Z
+    output: tests/phase1/postgres/ — 7 test files for IT-PV-01..06 + EC-03 + EC-07.
+      Surfaces FK type mismatch in migration 010.
+  - id: S4-141
+    title: 1.3.2 Swap docker-compose image to Valkey 8
+    type: impl
+    workstream: infra
+    phase: "1"
+    assignee: sre
+    gate: pre-deploy
+    status: done
+    priority: p0
+    dependsOn:
+      - S4-001
+      - S4-002
+    touches:
+      - docker-compose.yml
+    acceptanceCriteria:
+      - IT-VK-01
+      - IT-VK-07
+      - IT-VK-08
+    completedAt: 2026-04-09T04:42:27.546Z
+    output: Valkey 8.1.6 healthy. ADR-002 + Mig Guide amended with v12 RDB
+      preflight. IT-VK-01/07(revised)/08 PASS.
+  - id: S4-142
+    title: 1.3.3 Valkey integration tests (cache, session, broker, pubsub)
+    type: impl
+    workstream: backend
+    phase: "1"
+    assignee: qa
+    gate: pre-merge
+    status: done
+    priority: p0
+    dependsOn:
+      - S4-141
+    touches:
+      - tests/phase1/valkey/
+    acceptanceCriteria:
+      - IT-VK-02
+      - IT-VK-03
+      - IT-VK-04
+      - IT-VK-05
+      - IT-VK-06
+      - IT-VK-09
+      - FI-02
+      - RT-03
+    completedAt: 2026-04-09T04:46:38.408Z
+    output: tests/phase1/valkey/ — 9 files covering IT-VK-01..09, FI-02, RT-03
+  - id: S4-199
+    title: "Phase 1 exit: full stack smoke + 72h observation window"
+    type: impl
+    workstream: release
+    phase: "1"
+    assignee: sre
+    gate: pre-deploy
+    status: blocked
+    priority: p0
+    dependsOn:
+      - S4-102
+      - S4-115
+      - S4-123
+      - S4-124
+      - S4-135
+      - S4-142
+    acceptanceCriteria:
+      - Post-upgrade E2E smoke passes on upgraded stack
+      - No P0/P1 regressions vs Phase 0 baseline for 72h
+      - All gate docs approved
+    blockedReason: "Cannot execute in CLI session: requires (a) fix for migration
+      010 UUID/INTEGER FK mismatch [follow-up #FU-1], (b) Qdrant digest pin
+      [#FU-2], (c) RT-04 baseline file [#FU-3], (d) actual staging deploy + 72h
+      observation window. All upstream work is code-complete and ready for
+      staging dress rehearsal."

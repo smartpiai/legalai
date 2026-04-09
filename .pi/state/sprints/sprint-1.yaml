@@ -6,7 +6,7 @@ startDate: 2026-04-05
 endDate: 2026-04-19
 roadmapPhases:
   - "0"
-status: active
+status: completed
 backlog:
   - id: S1-001
     title: Create Phase 0 BRD

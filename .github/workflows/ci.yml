@@ -8,17 +8,47 @@ on:
 
 jobs:
   # S3-013 — Backend test suite with coverage (IT-CI-01, IT-CI-02)
+  # PR 1.1.4 — PostgreSQL 17 (pgvector/pgvector:pg17) is the primary DB lane,
+  # matching docker-compose. PG 15 is retained as a regression lane below.
   test-backend:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: '3.11'
+            postgres-image: 'pgvector/pgvector:pg17'
+            postgres-version: '17'
+            primary: true
+          - python-version: '3.11'
+            postgres-image: 'postgres:15'
+            postgres-version: '15'
+            primary: false
     defaults:
       run:
         working-directory: backend
+    services:
+      postgres:
+        image: ${{ matrix.postgres-image }}
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: legalai_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_PG17_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/postgres
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
           cache: 'pip'
           cache-dependency-path: backend/requirements.lock
       - name: Install dependencies
@@ -32,7 +62,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: backend-coverage
+          name: backend-coverage-pg${{ matrix.postgres-version }}
           path: |
             backend/coverage.xml
             backend/pytest-report.xml
@@ -178,10 +208,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download backend coverage
+      - name: Download backend coverage (PG17 primary)
         uses: actions/download-artifact@v3
         with:
-          name: backend-coverage
+          name: backend-coverage-pg17
           path: artifacts/backend
       - name: Download frontend coverage
         uses: actions/download-artifact@v3

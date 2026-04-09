@@ -14,10 +14,23 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
-# Import your models' metadata
-from app.models.base import Base
-from app.models import *  # Import all models to register them
-from app.core.config import settings
+# Import your models' metadata.
+# During Phase 1 scaffolding `app.models` may be missing; replay/migration
+# operations (upgrade/downgrade) do not require live metadata, only
+# autogenerate does. Tolerate the import failure so that PR 1.1.2's
+# migration-replay tests on PG 17 can run.
+try:
+    from app.models.base import Base  # type: ignore
+    from app.models import *  # noqa: F401,F403
+    _target_metadata = Base.metadata
+except Exception:  # pragma: no cover - scaffolding fallback
+    _target_metadata = None
+
+try:
+    from app.core.config import settings  # type: ignore
+    _settings_db_url = settings.DATABASE_URL
+except Exception:  # pragma: no cover
+    _settings_db_url = "postgresql://postgres:postgres@localhost:5432/postgres"
 
 # this is the Alembic Config object
 config = context.config
@@ -27,14 +40,14 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Set the database URL from environment or config
-database_url = os.getenv("DATABASE_URL", settings.DATABASE_URL)
+database_url = os.getenv("DATABASE_URL", _settings_db_url)
 if not database_url.startswith("postgresql+asyncpg://"):
     database_url = database_url.replace("postgresql://", "postgresql+asyncpg://")
 
 config.set_main_option("sqlalchemy.url", database_url)
 
-# Target metadata for autogenerate
-target_metadata = Base.metadata
+# Target metadata for autogenerate (None during scaffolding)
+target_metadata = _target_metadata
 
 
 def run_migrations_offline() -> None:

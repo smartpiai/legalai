@@ -51,7 +51,7 @@ def upgrade() -> None:
         sa.Column('key_hash', sa.String(255), nullable=False),
         sa.Column('key_prefix', sa.String(10), nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),
-        sa.Column('tenant_id', sa.Integer(), nullable=False),
+        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('scopes', sa.JSON(), nullable=True),
         sa.Column('permissions', sa.JSON(), nullable=True),
         sa.Column('rate_limit_per_minute', sa.Integer(), nullable=True),

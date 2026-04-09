@@ -7,6 +7,7 @@ Create Date: 2024-08-14 15:00:00.000000
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '008'
@@ -25,7 +26,7 @@ def upgrade() -> None:
         sa.Column('token_hash', sa.String(255), nullable=False),
         sa.Column('family_id', sa.String(255), nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),  # Match existing user ID type
-        sa.Column('tenant_id', sa.Integer(), nullable=False),  # Match existing tenant ID type
+        sa.Column('tenant_id', postgresql.UUID(as_uuid=True), nullable=False),  # Matches tenants.id (UUID, PR FU-1)
         sa.Column('is_active', sa.Boolean(), nullable=False, default=True),
         sa.Column('expires_at', sa.DateTime(), nullable=False),
         sa.Column('issued_at', sa.DateTime(), nullable=False),

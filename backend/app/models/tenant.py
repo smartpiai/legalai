@@ -26,6 +26,7 @@ from app.models.base import Base
 if TYPE_CHECKING:
     from app.models.document import Document
     from app.models.document_embedding import DocumentEmbedding
+    from app.models.user import User
 
 
 class Tenant(Base):
@@ -42,6 +43,12 @@ class Tenant(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
+    users: Mapped[list["User"]] = relationship(
+        "User",
+        back_populates="tenant",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
     documents: Mapped[list["Document"]] = relationship(
         "Document",
         back_populates="tenant",

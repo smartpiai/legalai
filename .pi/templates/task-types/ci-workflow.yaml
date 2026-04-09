@@ -1,0 +1,30 @@
+# Task type: ci-workflow
+# Use for: adding or modifying a GitHub Actions workflow file.
+name: ci-workflow
+description: >
+  A unit of CI/CD work — one workflow file or one job within a workflow.
+  Typically: lint, test, build, security-scan, or release pipelines.
+
+defaults:
+  workstream: ci
+  assignee: devops
+  chain: build-ci-workflow
+  gate: pre-merge
+  priority: p1
+  touches:
+    - .github/workflows/**
+    - .github/actions/**
+
+acceptance:
+  shape: >
+    Must reference at least one Test Spec case ID in the TS-CI-* range.
+    The workflow must be runnable locally with `act` or equivalent before
+    being marked done.
+  required_checks:
+    - workflow file lints clean (actionlint)
+    - matches ID Spec contract (job names, artifacts, env vars)
+    - dry-run via `act` succeeds (or documented why not)
+
+notes: |
+  If the workflow runs migrations, depends_on the relevant db-migration task.
+  Keep one logical pipeline per task — do not bundle lint + test + deploy.

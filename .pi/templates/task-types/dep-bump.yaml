@@ -1,0 +1,35 @@
+# Task type: dep-bump
+# Use for: bumping, pinning, or removing a dependency in pyproject/package.json.
+name: dep-bump
+description: >
+  One dependency change — bump for security, pin for stability, or removal.
+  Driven by Dep Review or Sec Review findings.
+
+defaults:
+  workstream: deps
+  assignee: backend-dev
+  chain: TODO  # harden-dependency chain not yet implemented
+  gate: pre-merge
+  priority: p1
+  touches:
+    - backend/pyproject.toml
+    - backend/poetry.lock
+    - backend/requirements*.txt
+    - frontend/package.json
+    - frontend/package-lock.json
+
+acceptance:
+  shape: >
+    Must reference the Sec Review or Dep Review finding ID being addressed.
+    Acceptance is "test suite green + lockfile regenerated + no new
+    high/critical advisories from the audit tool."
+  required_checks:
+    - lockfile regenerated and committed
+    - full test suite passes
+    - `pip-audit` / `npm audit` shows no new high/critical findings
+    - breaking-change notes captured if any
+
+notes: |
+  One package per task unless they must be bumped together (peer deps).
+  If the bump is breaking, link the follow-up code-change tasks via
+  `dependsOn` from those tasks back to this one.

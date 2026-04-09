@@ -60,12 +60,12 @@ print_info() {
 detect_machine_ip() {
     local detected_ip=""
     
-    print_status "Detecting machine IP address..."
+    print_status "Detecting machine IP address..." >&2
     
     # If IP was forced via command line, use that
     if [ -n "$FORCE_IP" ]; then
         detected_ip="$FORCE_IP"
-        print_info "Using forced IP: $detected_ip"
+        print_info "Using forced IP: $detected_ip" >&2
         echo "$detected_ip"
         return 0
     fi
@@ -74,7 +74,7 @@ detect_machine_ip() {
     if command -v hostname >/dev/null 2>&1; then
         detected_ip=$(hostname -I 2>/dev/null | awk '{print $1}')
         if [ -n "$detected_ip" ] && [ "$detected_ip" != "127.0.0.1" ]; then
-            [ "$VERBOSE" = true ] && print_info "IP detected via hostname: $detected_ip"
+            [ "$VERBOSE" = true ] && print_info "IP detected via hostname: $detected_ip" >&2
             echo "$detected_ip"
             return 0
         fi
@@ -84,7 +84,7 @@ detect_machine_ip() {
     if command -v ip >/dev/null 2>&1; then
         detected_ip=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '127.0.0.1' | head -1)
         if [ -n "$detected_ip" ]; then
-            [ "$VERBOSE" = true ] && print_info "IP detected via ip command: $detected_ip"
+            [ "$VERBOSE" = true ] && print_info "IP detected via ip command: $detected_ip" >&2
             echo "$detected_ip"
             return 0
         fi
@@ -94,7 +94,7 @@ detect_machine_ip() {
     if command -v ifconfig >/dev/null 2>&1; then
         detected_ip=$(ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1' | head -1)
         if [ -n "$detected_ip" ]; then
-            [ "$VERBOSE" = true ] && print_info "IP detected via ifconfig: $detected_ip"
+            [ "$VERBOSE" = true ] && print_info "IP detected via ifconfig: $detected_ip" >&2
             echo "$detected_ip"
             return 0
         fi
@@ -104,7 +104,7 @@ detect_machine_ip() {
     if command -v ip >/dev/null 2>&1; then
         detected_ip=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7; exit}')
         if [ -n "$detected_ip" ] && [ "$detected_ip" != "127.0.0.1" ]; then
-            [ "$VERBOSE" = true ] && print_info "IP detected via route: $detected_ip"
+            [ "$VERBOSE" = true ] && print_info "IP detected via route: $detected_ip" >&2
             echo "$detected_ip"
             return 0
         fi
@@ -115,7 +115,7 @@ detect_machine_ip() {
     if curl -s --max-time 1 http://169.254.169.254/latest/meta-data/local-ipv4 >/dev/null 2>&1; then
         detected_ip=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4 2>/dev/null)
         if [ -n "$detected_ip" ]; then
-            [ "$VERBOSE" = true ] && print_info "IP detected via AWS metadata: $detected_ip"
+            [ "$VERBOSE" = true ] && print_info "IP detected via AWS metadata: $detected_ip" >&2
             echo "$detected_ip"
             return 0
         fi
@@ -125,7 +125,7 @@ detect_machine_ip() {
     if curl -s --max-time 1 -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/ip >/dev/null 2>&1; then
         detected_ip=$(curl -s -H "Metadata-Flavor: Google" http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/ip 2>/dev/null)
         if [ -n "$detected_ip" ]; then
-            [ "$VERBOSE" = true ] && print_info "IP detected via GCP metadata: $detected_ip"
+            [ "$VERBOSE" = true ] && print_info "IP detected via GCP metadata: $detected_ip" >&2
             echo "$detected_ip"
             return 0
         fi
@@ -135,14 +135,14 @@ detect_machine_ip() {
     if curl -s --max-time 1 -H "Metadata: true" "http://169.254.169.254/metadata/instance/network/interface/0/ipv4/ipAddress/0/privateIpAddress?api-version=2021-02-01&format=text" >/dev/null 2>&1; then
         detected_ip=$(curl -s -H "Metadata: true" "http://169.254.169.254/metadata/instance/network/interface/0/ipv4/ipAddress/0/privateIpAddress?api-version=2021-02-01&format=text" 2>/dev/null)
         if [ -n "$detected_ip" ]; then
-            [ "$VERBOSE" = true ] && print_info "IP detected via Azure metadata: $detected_ip"
+            [ "$VERBOSE" = true ] && print_info "IP detected via Azure metadata: $detected_ip" >&2
             echo "$detected_ip"
             return 0
         fi
     fi
     
     # Default to localhost if nothing else works
-    print_warning "Could not detect machine IP, defaulting to localhost"
+    print_warning "Could not detect machine IP, defaulting to localhost" >&2
     echo "localhost"
 }
 
@@ -154,10 +154,17 @@ backup_env_file() {
     fi
 }
 
+# Portable in-place sed (GNU vs BSD/macOS)
+if sed --version >/dev/null 2>&1; then
+    SED_INPLACE=(sed -i)
+else
+    SED_INPLACE=(sed -i '')
+fi
+
 # Function to update environment variables with detected IP
 update_env_with_ip() {
     local machine_ip="$1"
-    
+
     print_status "Updating environment configuration with IP: $machine_ip"
     
     # Backup current .env file
@@ -174,7 +181,7 @@ update_env_with_ip() {
         if [[ "$current_cors" != *"$machine_ip"* ]]; then
             # Add machine IP to CORS origins
             local new_cors="$current_cors,http://$machine_ip:3000,http://$machine_ip:8000"
-            sed -i "s|^BACKEND_CORS_ORIGINS=.*|BACKEND_CORS_ORIGINS=\"$new_cors\"|" "$ENV_FILE"
+            "${SED_INPLACE[@]}" "s|^BACKEND_CORS_ORIGINS=.*|BACKEND_CORS_ORIGINS=\"$new_cors\"|" "$ENV_FILE"
             print_success "Updated CORS origins with machine IP"
         fi
     fi
@@ -182,12 +189,12 @@ update_env_with_ip() {
     # Update API base URL for frontend (if not localhost)
     if [ "$machine_ip" != "localhost" ]; then
         # Update VITE_API_BASE_URL to use the machine IP
-        sed -i "s|^VITE_API_BASE_URL=.*|VITE_API_BASE_URL=\"http://$machine_ip:8000\"|" "$ENV_FILE"
+        "${SED_INPLACE[@]}" "s|^VITE_API_BASE_URL=.*|VITE_API_BASE_URL=\"http://$machine_ip:8000\"|" "$ENV_FILE"
         print_success "Updated frontend API base URL"
         
         # Update FRONTEND_URL and BACKEND_URL
-        sed -i "s|^FRONTEND_URL=.*|FRONTEND_URL=\"http://$machine_ip:3000\"|" "$ENV_FILE"
-        sed -i "s|^BACKEND_URL=.*|BACKEND_URL=\"http://$machine_ip:8000\"|" "$ENV_FILE"
+        "${SED_INPLACE[@]}" "s|^FRONTEND_URL=.*|FRONTEND_URL=\"http://$machine_ip:3000\"|" "$ENV_FILE"
+        "${SED_INPLACE[@]}" "s|^BACKEND_URL=.*|BACKEND_URL=\"http://$machine_ip:8000\"|" "$ENV_FILE"
         print_success "Updated frontend and backend URLs"
     fi
     
